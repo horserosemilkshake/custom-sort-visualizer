@@ -9,6 +9,11 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 pkg_check_modules(GMODULE REQUIRED gmodule-2.0)
 
+set(PLATFORM_DL_LIB)
+if(NOT WIN32)
+    set(PLATFORM_DL_LIB dl)
+endif()
+
 add_executable(sort-visualizer
     src/main.c
     src/sort_engine.c
@@ -37,14 +42,14 @@ target_compile_options(sort-visualizer PRIVATE
 target_link_libraries(sort-visualizer PRIVATE
     ${GTK3_LIBRARIES}
     ${GMODULE_LIBRARIES}
-    dl
+    ${PLATFORM_DL_LIB}
 )
 
 if(NOT WIN32)
 target_link_libraries(sort-visualizer-worker PRIVATE
     ${GTK3_LIBRARIES}
     ${GMODULE_LIBRARIES}
-    dl
+    ${PLATFORM_DL_LIB}
 )
 endif()
 

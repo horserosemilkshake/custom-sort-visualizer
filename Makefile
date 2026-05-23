@@ -1,6 +1,6 @@
 CC := gcc
 CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -O2 $(shell pkg-config --cflags gtk+-3.0 gmodule-2.0)
-LDFLAGS := $(shell pkg-config --libs gtk+-3.0 gmodule-2.0) -ldl
+LDFLAGS := $(shell pkg-config --libs gtk+-3.0 gmodule-2.0)
 
 SRC := src/main.c src/sort_engine.c
 OBJ := $(SRC:.c=.o)
@@ -17,6 +17,7 @@ WORKER_TARGETS :=
 else
 BUILD_WORKER := 1
 WORKER_TARGETS := $(WORKER)
+LDFLAGS += -ldl
 endif
 
 all: $(TARGET) $(WORKER_TARGETS)
