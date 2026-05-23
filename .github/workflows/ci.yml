@@ -51,6 +51,9 @@ jobs:
       - name: Build with CMake
         run: cmake --build build
 
+      - name: Run tests (CMake)
+        run: ctest --test-dir build --output-on-failure
+
   build-windows-cmake:
     name: Build (Windows CMake)
     runs-on: windows-latest
@@ -77,6 +80,10 @@ jobs:
       - name: Build with CMake (Windows)
         shell: msys2 {0}
         run: cmake --build build
+
+      - name: Run tests (Windows CMake)
+        shell: msys2 {0}
+        run: ctest --test-dir build --output-on-failure
 
   build-windows-make:
     name: Build (Windows Make)
