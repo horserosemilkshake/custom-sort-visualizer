@@ -4,6 +4,8 @@ Custom Sort Visualizer is a desktop application written in C with GTK that anima
 
 The visualizer accepts a user-defined integer array, captures intermediate states as animation frames, and plays those frames in the chart area so every swap and movement can be observed. It also highlights imminent swaps and shows per-bar values to make behavior easier to follow during execution.
 
+![Runtime Screenshot](assets/runtime.png)
+
 ## Supported Algorithms
 
 The built-in catalog includes Quick Sort, Merge Sort, Heap Sort, Bubble Sort, Selection Sort, Insertion Sort, Gnome Sort, Shaker Sort, Odd Even Sort, Pancake Sort, Bitonic Sort, Radix Sort, Shell Sort, Comb Sort, Bogo Sort, and Stooge Sort. Each algorithm is presented through a shared execution interface so the UI can run and animate them consistently.

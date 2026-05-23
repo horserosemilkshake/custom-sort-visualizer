@@ -50,3 +50,30 @@ jobs:
 
       - name: Build with CMake
         run: cmake --build build
+
+  build-windows-cmake:
+    name: Build (Windows CMake)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-gtk3
+
+      - name: Configure CMake (Windows)
+        shell: msys2 {0}
+        run: cmake -S . -B build -G "MinGW Makefiles"
+
+      - name: Build with CMake (Windows)
+        shell: msys2 {0}
+        run: cmake --build build
