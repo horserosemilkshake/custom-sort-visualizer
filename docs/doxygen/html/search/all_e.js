@@ -1,0 +1,26 @@
+var searchData=
+[
+  ['safety_0',['Custom Sort Execution Safety',['../index.html#autotoc_md6',1,'']]],
+  ['sort_20execution_20safety_1',['Custom Sort Execution Safety',['../index.html#autotoc_md6',1,'']]],
+  ['sort_20extension_2',['Custom C Sort Extension',['../index.html#autotoc_md5',1,'']]],
+  ['sort_20visualizer_20c_20gtk_3',['Custom Sort Visualizer (C + GTK)',['../index.html',1,'']]],
+  ['sort_5fengine_2ec_4',['sort_engine.c',['../sort__engine_8c.html',1,'']]],
+  ['sort_5fengine_2eh_5',['sort_engine.h',['../sort__engine_8h.html',1,'']]],
+  ['sort_5ffind_5falgorithm_6',['sort_find_algorithm',['../sort__engine_8h.html#a4782ac80e6e59f087db73f1f5cfbd2a1',1,'sort_find_algorithm(const char *id):&#160;sort_engine.c'],['../sort__engine_8c.html#a4782ac80e6e59f087db73f1f5cfbd2a1',1,'sort_find_algorithm(const char *id):&#160;sort_engine.c']]],
+  ['sort_5fframes_5fcapture_7',['sort_frames_capture',['../sort__engine_8h.html#a65d1a9482ed9c92f9741010b99dba8bc',1,'sort_frames_capture(SortFrames *frames, const int *arr, size_t n, GError **error):&#160;sort_engine.c'],['../sort__engine_8c.html#a65d1a9482ed9c92f9741010b99dba8bc',1,'sort_frames_capture(SortFrames *frames, const int *arr, size_t n, GError **error):&#160;sort_engine.c']]],
+  ['sort_5fframes_5fclear_8',['sort_frames_clear',['../sort__engine_8h.html#aa7f942c3ce22c8870103744bad076d3b',1,'sort_frames_clear(SortFrames *frames):&#160;sort_engine.c'],['../sort__engine_8c.html#aa7f942c3ce22c8870103744bad076d3b',1,'sort_frames_clear(SortFrames *frames):&#160;sort_engine.c']]],
+  ['sort_5fframes_5finit_9',['sort_frames_init',['../sort__engine_8h.html#a1d5b66a88bd791c2b66f28138ddb99e4',1,'sort_frames_init(SortFrames *frames):&#160;sort_engine.c'],['../sort__engine_8c.html#a1d5b66a88bd791c2b66f28138ddb99e4',1,'sort_frames_init(SortFrames *frames):&#160;sort_engine.c']]],
+  ['sort_5fget_5falgorithms_10',['sort_get_algorithms',['../sort__engine_8h.html#a5df81018d2fc0f8cf006be58ef460edd',1,'sort_get_algorithms(size_t *count):&#160;sort_engine.c'],['../sort__engine_8c.html#a5df81018d2fc0f8cf006be58ef460edd',1,'sort_get_algorithms(size_t *count):&#160;sort_engine.c']]],
+  ['sort_5frun_5falgorithm_11',['sort_run_algorithm',['../sort__engine_8h.html#aa3f2a6d54ea14b9d9dd5bad9700b3fb5',1,'sort_run_algorithm(const SortAlgorithm *algorithm, const int *input, size_t n, SortFrames *frames, GError **error):&#160;sort_engine.c'],['../sort__engine_8c.html#aa3f2a6d54ea14b9d9dd5bad9700b3fb5',1,'sort_run_algorithm(const SortAlgorithm *algorithm, const int *input, size_t n, SortFrames *frames, GError **error):&#160;sort_engine.c']]],
+  ['sortalgorithm_12',['SortAlgorithm',['../structSortAlgorithm.html',1,'']]],
+  ['sortcontext_13',['SortContext',['../structSortContext.html',1,'']]],
+  ['sortframes_14',['SortFrames',['../structSortFrames.html',1,'']]],
+  ['source_5fpath_15',['source_path',['../structCustomSortHandle.html#aea6b6fc373d7a30bb0116b90180f6d7e',1,'CustomSortHandle']]],
+  ['speed_5flabel_16',['speed_label',['../structAppState.html#a0a59a9ddaef8a7b7a640ce05ccb906cc',1,'AppState']]],
+  ['speed_5fscale_17',['speed_scale',['../structAppState.html#a8bebbeb57cec37e6b35aea99e52efbad',1,'AppState']]],
+  ['stable_18',['stable',['../structSortAlgorithm.html#a3dbbaeb36278f18cedcb3c8d14e3ffae',1,'SortAlgorithm']]],
+  ['start_5fbutton_19',['start_button',['../structAppState.html#ac8c161e5fe9f6cb49002f9f23d7fede1',1,'AppState']]],
+  ['status_5flabel_20',['status_label',['../structAppState.html#ae796b21109eea92365b7ce6bbb28a6f9',1,'AppState']]],
+  ['stooge_5fmax_5felements_21',['STOOGE_MAX_ELEMENTS',['../sort__engine_8c.html#abdd4a0f3a1fb84334babbf38564e861f',1,'sort_engine.c']]],
+  ['supported_20algorithms_22',['Supported Algorithms',['../index.html#autotoc_md1',1,'']]]
+];

@@ -1,0 +1,25 @@
+var searchData=
+[
+  ['c_20gtk_0',['Custom Sort Visualizer (C + GTK)',['../index.html',1,'']]],
+  ['c_20sort_20extension_1',['Custom C Sort Extension',['../index.html#autotoc_md5',1,'']]],
+  ['cmake_2',['Recommended Build Method (CMake)',['../index.html#autotoc_md2',1,'']]],
+  ['compile_5fbutton_3',['compile_button',['../structAppState.html#aa4ac02003b96048645fff3fb2654ad12',1,'AppState']]],
+  ['custom_20c_20sort_20extension_4',['Custom C Sort Extension',['../index.html#autotoc_md5',1,'']]],
+  ['custom_20sort_20execution_20safety_5',['Custom Sort Execution Safety',['../index.html#autotoc_md6',1,'']]],
+  ['custom_20sort_20visualizer_20c_20gtk_6',['Custom Sort Visualizer (C + GTK)',['../index.html',1,'']]],
+  ['custom_5fexpander_7',['custom_expander',['../structAppState.html#aaf2b401938153cdaf79e439bfb84e05f',1,'AppState']]],
+  ['custom_5fhandle_8',['custom_handle',['../structAppState.html#a9c7ff968fa1fd04191c849351cf06251',1,'AppState']]],
+  ['custom_5fregistered_9',['custom_registered',['../structAppState.html#ab8ec5667b897bfe1b1e0009eff24384e',1,'AppState']]],
+  ['custom_5fsort_5fcompile_10',['custom_sort_compile',['../sort__engine_8h.html#a600e167545f96b1af2ea4b208a3e715b',1,'custom_sort_compile(CustomSortHandle *handle, const char *user_code, GError **error):&#160;sort_engine.c'],['../sort__engine_8c.html#a600e167545f96b1af2ea4b208a3e715b',1,'custom_sort_compile(CustomSortHandle *handle, const char *user_code, GError **error):&#160;sort_engine.c']]],
+  ['custom_5fsort_5ffn_11',['custom_sort_fn',['../structCustomSortHandle.html#a91666019a38000ee399d53e9bac987bc',1,'CustomSortHandle']]],
+  ['custom_5fsort_5fhandle_5fclear_12',['custom_sort_handle_clear',['../sort__engine_8h.html#aca9011ef4d8158e0b17689d49cbb9849',1,'custom_sort_handle_clear(CustomSortHandle *handle):&#160;sort_engine.c'],['../sort__engine_8c.html#aca9011ef4d8158e0b17689d49cbb9849',1,'custom_sort_handle_clear(CustomSortHandle *handle):&#160;sort_engine.c']]],
+  ['custom_5fsort_5fhandle_5finit_13',['custom_sort_handle_init',['../sort__engine_8h.html#ab9f31c926bdc56c8ff13f9b74725621c',1,'custom_sort_handle_init(CustomSortHandle *handle):&#160;sort_engine.c'],['../sort__engine_8c.html#ab9f31c926bdc56c8ff13f9b74725621c',1,'custom_sort_handle_init(CustomSortHandle *handle):&#160;sort_engine.c']]],
+  ['custom_5fsort_5frun_14',['custom_sort_run',['../sort__engine_8h.html#a20a1d41b7ee96d5b408647e21f480681',1,'custom_sort_run(CustomSortHandle *handle, const int *input, size_t n, SortFrames *frames, GError **error):&#160;sort_engine.c'],['../sort__engine_8c.html#a20a1d41b7ee96d5b408647e21f480681',1,'custom_sort_run(CustomSortHandle *handle, const int *input, size_t n, SortFrames *frames, GError **error):&#160;sort_engine.c']]],
+  ['custom_5fsort_5ftemplate_15',['custom_sort_template',['../sort__engine_8h.html#a69252233ec35517a6d4565433d5cf200',1,'custom_sort_template(void):&#160;sort_engine.c'],['../sort__engine_8c.html#a69252233ec35517a6d4565433d5cf200',1,'custom_sort_template(void):&#160;sort_engine.c']]],
+  ['custom_5ftext_5fview_16',['custom_text_view',['../structAppState.html#ab4aba683d5fbdc7a289e79f5b325df55',1,'AppState']]],
+  ['custom_5fworker_2ec_17',['custom_worker.c',['../custom__worker_8c.html',1,'']]],
+  ['custom_5fworker_5ftimeout_5fms_18',['CUSTOM_WORKER_TIMEOUT_MS',['../sort__engine_8c.html#a2dcc2aed0c4b8805a7e464deaf429aad',1,'sort_engine.c']]],
+  ['customsortfn_19',['CustomSortFn',['../custom__worker_8c.html#a6cd88c6f3d8bf27986ca90e17ef0108a',1,'custom_worker.c']]],
+  ['customsorthandle_20',['CustomSortHandle',['../structCustomSortHandle.html',1,'']]],
+  ['customswapcontext_21',['CustomSwapContext',['../structCustomSwapContext.html',1,'']]]
+];
