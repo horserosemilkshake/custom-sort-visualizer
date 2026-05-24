@@ -31,8 +31,51 @@ if [[ ! -x "${LINUXDEPLOY_BIN}" ]]; then
 fi
 
 pushd "${ROOT_DIR}" >/dev/null
+# Avoid bundling host-provided platform and GTK stack libraries.
+# This reduces ABI-mismatch crashes caused by mixing many transitive libs in AppImage.
+EXCLUDE_LIBS=(
+  "libsystemd.so*"
+  "libmount.so*"
+  "libblkid.so*"
+  "libselinux.so*"
+  "libseccomp.so*"
+  "libdbus-1.so*"
+  "libglib-2.0.so*"
+  "libgobject-2.0.so*"
+  "libgio-2.0.so*"
+  "libgmodule-2.0.so*"
+  "libgtk-3.so*"
+  "libgdk-3.so*"
+  "libgdk_pixbuf-2.0.so*"
+  "libatk-1.0.so*"
+  "libatk-bridge-2.0.so*"
+  "libatspi.so*"
+  "libpango-1.0.so*"
+  "libpangocairo-1.0.so*"
+  "libpangoft2-1.0.so*"
+  "libcairo.so*"
+  "libcairo-gobject.so*"
+  "libepoxy.so*"
+  "libxkbcommon.so*"
+  "libthai.so*"
+  "libdatrie.so*"
+  "libjson-glib-1.0.so*"
+  "libsqlite3.so*"
+  "liblcms2.so*"
+  "libxml2.so*"
+  "libffi.so*"
+  "libgraphite2.so*"
+  "libpixman-1.so*"
+)
+
+LINUXDEPLOY_ARGS=()
+for pattern in "${EXCLUDE_LIBS[@]}"; do
+  LINUXDEPLOY_ARGS+=("--exclude-library" "${pattern}")
+done
+
 ARCH=x86_64 NO_STRIP=1 "${LINUXDEPLOY_BIN}" \
   --appdir "${APPDIR}" \
+  "${LINUXDEPLOY_ARGS[@]}" \
   -d "packaging/sort-visualizer.desktop" \
   -i "assets/sort-visualizer.svg" \
   --output appimage

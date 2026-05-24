@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Sort Visualizer icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="40" fill="url(#bg)"/>
+  <rect x="40" y="154" width="24" height="62" rx="6" fill="url(#bar)"/>
+  <rect x="76" y="130" width="24" height="86" rx="6" fill="url(#bar)"/>
+  <rect x="112" y="96" width="24" height="120" rx="6" fill="url(#bar)"/>
+  <rect x="148" y="70" width="24" height="146" rx="6" fill="url(#bar)"/>
+  <rect x="184" y="40" width="24" height="176" rx="6" fill="url(#bar)"/>
+  <path d="M40 58h168" stroke="#f8fafc" stroke-width="10" stroke-linecap="round" opacity="0.85"/>
+</svg>
