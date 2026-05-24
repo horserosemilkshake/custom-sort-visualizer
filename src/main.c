@@ -400,6 +400,7 @@ static void refresh_algorithm_combo(AppState *app, const gchar *preferred_id) {
 
 static void apply_language(AppState *app) {
     const gchar *current_algo = gtk_combo_box_get_active_id(GTK_COMBO_BOX(app->algo_combo));
+    gchar *preferred_algo = current_algo ? g_strdup(current_algo) : NULL;
 
     gtk_window_set_title(GTK_WINDOW(app->window), tr(app->language, "window_title"));
     gtk_label_set_text(GTK_LABEL(app->language_label), tr(app->language, "language_label"));
@@ -419,7 +420,8 @@ static void apply_language(AppState *app) {
     set_meta_header(app->meta_in_place_header, tr(app->language, "meta_in_place"));
     set_meta_header(app->meta_notes_header, tr(app->language, "meta_notes"));
 
-    refresh_algorithm_combo(app, current_algo);
+    refresh_algorithm_combo(app, preferred_algo);
+    g_free(preferred_algo);
     set_status(app, tr(app->language, "status_ready"));
     update_algorithm_metadata(app);
 }

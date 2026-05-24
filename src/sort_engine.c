@@ -770,6 +770,7 @@ gboolean custom_sort_compile(CustomSortHandle *handle, const char *user_code, GE
 #endif
 
     if (!g_file_set_contents(source_path, user_code, -1, error)) {
+        g_rmdir(build_dir);
         g_free(build_dir);
         g_free(source_path);
         g_free(library_path);
@@ -791,10 +792,16 @@ gboolean custom_sort_compile(CustomSortHandle *handle, const char *user_code, GE
 
     if (!spawned || exit_status != 0) {
         gchar *msg = g_strdup_printf("Custom sort compilation failed:\n%s\n%s", stdout_str ? stdout_str : "", stderr_str ? stderr_str : "");
+        if (!spawned && error && *error) {
+            g_clear_error(error);
+        }
         g_set_error(error, sort_error_quark(), 1, "%s", msg);
         g_free(msg);
         g_free(stdout_str);
         g_free(stderr_str);
+        g_remove(source_path);
+        g_remove(library_path);
+        g_rmdir(build_dir);
         g_free(build_dir);
         g_free(source_path);
         g_free(library_path);
@@ -807,6 +814,9 @@ gboolean custom_sort_compile(CustomSortHandle *handle, const char *user_code, GE
     GModule *dl_handle = g_module_open(library_path, G_MODULE_BIND_LAZY);
     if (!dl_handle) {
         g_set_error(error, sort_error_quark(), 1, "Failed to load shared object: %s", g_module_error());
+        g_remove(source_path);
+        g_remove(library_path);
+        g_rmdir(build_dir);
         g_free(build_dir);
         g_free(source_path);
         g_free(library_path);
@@ -817,6 +827,9 @@ gboolean custom_sort_compile(CustomSortHandle *handle, const char *user_code, GE
     if (!g_module_symbol(dl_handle, "custom_sort", (gpointer *)&sort_fn) || !sort_fn) {
         g_module_close(dl_handle);
         g_set_error(error, sort_error_quark(), 1, "Function custom_sort was not found in compiled code");
+        g_remove(source_path);
+        g_remove(library_path);
+        g_rmdir(build_dir);
         g_free(build_dir);
         g_free(source_path);
         g_free(library_path);
