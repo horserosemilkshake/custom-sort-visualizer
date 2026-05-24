@@ -99,6 +99,10 @@ static void test_custom_sort_runtime_nonzero_result(void) {
 }
 
 static void test_custom_sort_runtime_missing_library(void) {
+#ifdef G_OS_WIN32
+    g_test_skip("Windows keeps loaded DLLs locked; runtime missing-library path is Unix-specific");
+    return;
+#else
     CustomSortHandle handle;
     SortFrames frames;
     GError *error = NULL;
@@ -121,6 +125,7 @@ static void test_custom_sort_runtime_missing_library(void) {
     g_clear_error(&error);
     sort_frames_clear(&frames);
     custom_sort_handle_clear(&handle);
+#endif
 }
 
 static void test_custom_sort_runtime_no_result_line(void) {
@@ -180,6 +185,120 @@ static void test_custom_sort_timeout(void) {
     custom_sort_handle_clear(&handle);
 }
 
+static void test_custom_sort_missing_symbol(void) {
+    CustomSortHandle handle;
+    GError *error = NULL;
+
+    const char *code =
+        "#include <stddef.h>\n"
+        "int not_custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+
+    g_assert_false(custom_sort_compile(&handle, code, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "Function custom_sort was not found"));
+
+    g_clear_error(&error);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_invalid_frame_token(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 1, 2};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME not,a,number\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "Worker emitted invalid frame token"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_invalid_result_line(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"RESULT not-a-number\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "Worker emitted invalid result line"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_worker_error_line(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {8, 2, 5};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"ERROR injected worker message\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "injected worker message"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
 int main(int argc, char **argv) {
     g_test_init(&argc, &argv, NULL);
 
@@ -189,6 +308,10 @@ int main(int argc, char **argv) {
     g_test_add_func("/integration/custom_sort_runtime_missing_library", test_custom_sort_runtime_missing_library);
     g_test_add_func("/integration/custom_sort_runtime_no_result_line", test_custom_sort_runtime_no_result_line);
     g_test_add_func("/integration/custom_sort_timeout", test_custom_sort_timeout);
+    g_test_add_func("/integration/custom_sort_missing_symbol", test_custom_sort_missing_symbol);
+    g_test_add_func("/integration/custom_sort_runtime_invalid_frame_token", test_custom_sort_runtime_invalid_frame_token);
+    g_test_add_func("/integration/custom_sort_runtime_invalid_result_line", test_custom_sort_runtime_invalid_result_line);
+    g_test_add_func("/integration/custom_sort_runtime_worker_error_line", test_custom_sort_runtime_worker_error_line);
 
     return g_test_run();
 }

@@ -176,6 +176,38 @@ static void test_runtime_translation_passthrough(void) {
     g_hash_table_destroy(app.runtime_translation_cache);
 }
 
+static void test_translation_tables_exhaustive(void) {
+    const char *keys[] = {
+        "window_title", "language_label", "array_placeholder", "randomize", "start", "speed_label",
+        "meta_frame", "meta_algorithm", "meta_best", "meta_average", "meta_worst", "meta_stable",
+        "meta_in_place", "meta_notes", "custom_expander", "compile_custom", "status_ready",
+        "status_playback_complete", "status_compile_failed", "status_custom_selected", "status_random_generated",
+        "status_invalid_input", "status_select_algo", "status_sort_failed", "status_sort_started",
+        "draw_empty", "meta_none", "meta_choose", "meta_unknown", "meta_unavailable", "meta_custom",
+        "meta_user_defined", "meta_custom_note", "yes", "no", "custom_algo_label",
+    };
+
+    const char *algo_ids[] = {
+        "quick", "merge", "heap", "bubble", "selection", "insertion", "gnome", "shaker",
+        "odd_even", "pancake", "bitonic", "radix", "shell", "comb", "bogo", "stooge",
+    };
+
+    for (size_t i = 0; i < G_N_ELEMENTS(keys); ++i) {
+        const char *k = keys[i];
+        g_assert_cmpstr(tr(APP_LANG_EN, k), !=, "");
+        g_assert_cmpstr(tr(APP_LANG_ZH_CN, k), !=, "");
+        g_assert_cmpstr(tr(APP_LANG_ZH_TW, k), !=, "");
+    }
+
+    for (size_t i = 0; i < G_N_ELEMENTS(algo_ids); ++i) {
+        const char *id = algo_ids[i];
+        g_assert_cmpstr(localize_algorithm_label(APP_LANG_ZH_CN, id, "fallback"), !=, "fallback");
+        g_assert_cmpstr(localize_algorithm_label(APP_LANG_ZH_TW, id, "fallback"), !=, "fallback");
+        g_assert_cmpstr(localize_algorithm_note(APP_LANG_ZH_CN, id, "fallback"), !=, "fallback");
+        g_assert_cmpstr(localize_algorithm_note(APP_LANG_ZH_TW, id, "fallback"), !=, "fallback");
+    }
+}
+
 static void test_event_language_algorithm_and_metadata(void) {
     if (!ensure_gtk_ready()) {
         return;
@@ -406,6 +438,7 @@ int main(int argc, char **argv) {
     g_test_add_func("/ui_helpers/swap_detection", test_swap_detection);
     g_test_add_func("/ui_helpers/parse_array_input", test_parse_array_input_paths);
     g_test_add_func("/ui_helpers/runtime_translation_passthrough", test_runtime_translation_passthrough);
+    g_test_add_func("/ui_helpers/translation_tables_exhaustive", test_translation_tables_exhaustive);
     g_test_add_func("/ui_helpers/events_language_algorithm_metadata", test_event_language_algorithm_and_metadata);
     g_test_add_func("/ui_helpers/events_compile_start_playback_speed", test_event_compile_start_playback_and_speed);
     g_test_add_func("/ui_helpers/events_invalid_randomize_expander_draw", test_event_invalid_input_randomize_expander_and_draw);
