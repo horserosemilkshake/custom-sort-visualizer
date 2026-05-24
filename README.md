@@ -74,6 +74,8 @@ cmake --build build-coverage
 cmake --build build-coverage --target coverage
 ```
 
+The `coverage` target enforces at least 85% line coverage for `src/main.c` and `src/sort_engine.c` (with bogo-sort lines excluded in source).
+
 This generates:
 
 - `build-coverage/coverage.info` (lcov data)

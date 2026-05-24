@@ -932,16 +932,17 @@ static void on_window_destroy(GtkWidget *widget, gpointer user_data) {
     gtk_main_quit();
 }
 
-int main(int argc, char **argv) {
-    gtk_init(&argc, &argv);
-
+static AppState *app_state_new(void) {
     AppState *app = g_new0(AppState, 1);
     sort_frames_init(&app->playback_frames);
     custom_sort_handle_init(&app->custom_handle);
     app->runtime_translation_cache = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-
-    app->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     app->language = APP_LANG_EN;
+    return app;
+}
+
+static void app_build_ui(AppState *app) {
+    app->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(app->window), tr(app->language, "window_title"));
     gtk_window_set_default_size(GTK_WINDOW(app->window), 1100, 760);
     gtk_container_set_border_width(GTK_CONTAINER(app->window), 10);
@@ -1084,6 +1085,13 @@ int main(int argc, char **argv) {
 
     apply_language(app);
     update_algorithm_metadata(app);
+}
+
+int main(int argc, char **argv) {
+    gtk_init(&argc, &argv);
+
+    AppState *app = app_state_new();
+    app_build_ui(app);
 
     gtk_widget_show_all(app->window);
     gtk_main();

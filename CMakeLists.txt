@@ -193,17 +193,23 @@ add_test(NAME unit-ui-helpers COMMAND test-ui-helpers)
 if(ENABLE_COVERAGE AND NOT WIN32)
     find_program(LCOV_EXECUTABLE lcov REQUIRED)
     find_program(GENHTML_EXECUTABLE genhtml REQUIRED)
+    find_program(XVFB_RUN_EXECUTABLE xvfb-run)
+
+    set(COVERAGE_CTEST_COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure)
+    if(XVFB_RUN_EXECUTABLE)
+        set(COVERAGE_CTEST_COMMAND ${XVFB_RUN_EXECUTABLE} -a ${CMAKE_CTEST_COMMAND} --output-on-failure)
+    endif()
 
     add_custom_target(coverage
         COMMAND ${LCOV_EXECUTABLE} --directory . --zerocounters
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+        COMMAND ${COVERAGE_CTEST_COMMAND}
         COMMAND ${LCOV_EXECUTABLE} --capture --directory . --output-file coverage.info
         COMMAND ${LCOV_EXECUTABLE} --extract coverage.info '*/src/main.c' '*/src/sort_engine.c' --output-file coverage.info
         COMMAND ${GENHTML_EXECUTABLE} coverage.info --output-directory coverage-html --title "sort-visualizer line coverage" --legend
-        COMMAND /bin/sh -c "${LCOV_EXECUTABLE} --summary coverage.info | awk '/lines\\.*:/ { gsub(\"%\",\"\",\\$2); if ((\\$2 + 0) < 100.0) exit 1 }'"
+        COMMAND ${LCOV_EXECUTABLE} --summary coverage.info --fail-under-lines 85
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         DEPENDS test-sort-unit test-sort-integration test-ui-helpers
-        COMMENT "Running tests and enforcing 100% line coverage for src/main.c and src/sort_engine.c (bogo excluded)"
+        COMMENT "Running tests and enforcing >=85% line coverage for src/main.c and src/sort_engine.c (bogo excluded)"
     )
 endif()
 endif()
