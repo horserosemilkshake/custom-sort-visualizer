@@ -188,7 +188,7 @@ endif()
 
 add_test(NAME unit-sort-engine COMMAND test-sort-unit)
 add_test(NAME integration-custom-sort COMMAND test-sort-integration)
-add_test(NAME unit-ui-helpers COMMAND test-ui-helpers)
+add_test(NAME unit-ui-helpers COMMAND ${CMAKE_COMMAND} -E env NO_AT_BRIDGE=1 $<TARGET_FILE:test-ui-helpers>)
 
 if(ENABLE_COVERAGE AND NOT WIN32)
     find_program(LCOV_EXECUTABLE lcov REQUIRED)
