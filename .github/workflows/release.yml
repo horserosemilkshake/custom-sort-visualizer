@@ -6,6 +6,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 jobs:
   linux-appimage:
     name: Linux AppImage
@@ -75,6 +78,8 @@ jobs:
     needs:
       - linux-appimage
       - windows-exe
+    permissions:
+      contents: write
 
     steps:
       - name: Download Linux artifact
@@ -97,6 +102,7 @@ jobs:
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           files: |
             release-assets/linux/*.AppImage
             sort-visualizer-windows-x86_64.zip
