@@ -1,6 +1,7 @@
 #include "sort_engine.h"
 
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include <string.h>
 
@@ -69,11 +70,125 @@ static void test_custom_sort_compile_error(void) {
     custom_sort_handle_clear(&handle);
 }
 
+static void test_custom_sort_runtime_nonzero_result(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {5, 4, 3, 2, 1};
+    const char *code =
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    return 7;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "custom_sort returned error code 7"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_missing_library(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {9, 1, 8, 2};
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, custom_sort_template(), &error));
+    g_assert_no_error(error);
+
+    g_assert_nonnull(handle.library_path);
+    g_assert_cmpint(g_remove(handle.library_path), ==, 0);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "cannot open shared object file"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_no_result_line(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stddef.h>\n"
+        "#include <stdlib.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    _Exit(0);\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "without a result line"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_timeout(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {2, 1};
+    const char *code =
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    for (;;) {}\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "Custom sort timed out"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
 int main(int argc, char **argv) {
     g_test_init(&argc, &argv, NULL);
 
     g_test_add_func("/integration/custom_sort_compile_and_run", test_custom_sort_compile_and_run);
     g_test_add_func("/integration/custom_sort_compile_error", test_custom_sort_compile_error);
+    g_test_add_func("/integration/custom_sort_runtime_nonzero_result", test_custom_sort_runtime_nonzero_result);
+    g_test_add_func("/integration/custom_sort_runtime_missing_library", test_custom_sort_runtime_missing_library);
+    g_test_add_func("/integration/custom_sort_runtime_no_result_line", test_custom_sort_runtime_no_result_line);
+    g_test_add_func("/integration/custom_sort_timeout", test_custom_sort_timeout);
 
     return g_test_run();
 }

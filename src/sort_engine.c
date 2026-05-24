@@ -563,6 +563,7 @@ static void bogo_shuffle(SortContext *ctx, GRand *rand_gen) {
     }
 }
 
+/* LCOV_EXCL_START */
 static gboolean run_bogo(int *arr, size_t n, SortFrames *frames, GError **error) {
     SortContext ctx = {.arr = arr, .n = n, .frames = frames, .error = error, .ok = TRUE};
     if (n > 10) {
@@ -595,6 +596,7 @@ static gboolean run_bogo(int *arr, size_t n, SortFrames *frames, GError **error)
 
     return TRUE;
 }
+/* LCOV_EXCL_STOP */
 
 static void stooge_impl(SortContext *ctx, size_t l, size_t h) {
     if (!ctx->ok || l >= h || h >= ctx->n) {

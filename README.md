@@ -58,6 +58,42 @@ make
 ./sort-visualizer
 ```
 
+## Testing and Line Coverage
+
+Run the test suite with CMake:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+To generate line coverage, install `lcov` and run a dedicated coverage build:
+
+```bash
+cmake -S . -B build-coverage -DENABLE_COVERAGE=ON
+cmake --build build-coverage
+cmake --build build-coverage --target coverage
+```
+
+This generates:
+
+- `build-coverage/coverage.info` (lcov data)
+- `build-coverage/coverage-html/index.html` (HTML report)
+
+### Coverage Report From CI Artifacts
+
+The CI workflow also publishes coverage outputs for each run of `Coverage (Linux)`:
+
+- `coverage-html` artifact includes:
+    - `coverage-summary.txt` (text summary from `lcov --summary`)
+    - `coverage.info` (raw lcov data)
+    - `coverage-html/` (HTML report)
+
+Download these from the workflow run page:
+
+1. Open [CI workflow runs](https://github.com/horserosemilkshake/custom-sort-visualizer/actions/workflows/ci.yml).
+2. Select a run and open the `Coverage (Linux)` job.
+3. Download the `coverage-html` artifact from the Artifacts section.
+
 ## Release Packaging
 
 This repository includes release scripts and a dedicated GitHub Actions workflow for shipping Linux and Windows binaries.

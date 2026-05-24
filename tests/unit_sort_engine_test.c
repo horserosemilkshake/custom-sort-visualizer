@@ -110,6 +110,61 @@ static void test_bogo_limit_error(void) {
     sort_frames_clear(&frames);
 }
 
+static void test_sort_run_algorithm_invalid_algorithm(void) {
+    SortFrames frames;
+    GError *error = NULL;
+    int input[] = {3, 2, 1};
+
+    sort_frames_init(&frames);
+    g_assert_false(sort_run_algorithm(NULL, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "Invalid algorithm"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+}
+
+static void test_custom_api_preconditions(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+    int input[] = {5, 1, 3};
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_false(custom_sort_compile(&handle, "", &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "Custom code cannot be empty"));
+    g_clear_error(&error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "No compiled custom sort available"));
+    g_clear_error(&error);
+
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_bogo_small_input_success(void) {
+    SortFrames frames;
+    GError *error = NULL;
+    int input[] = {2, 1};
+
+    const SortAlgorithm *algo = sort_find_algorithm("bogo");
+    g_assert_nonnull(algo);
+
+    sort_frames_init(&frames);
+
+    g_assert_true(sort_run_algorithm(algo, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >, 0);
+    g_assert_true(array_is_sorted(frames.frames[frames.frame_count - 1], frames.n));
+
+    sort_frames_clear(&frames);
+}
+
 int main(int argc, char **argv) {
     g_test_init(&argc, &argv, NULL);
 
@@ -117,6 +172,9 @@ int main(int argc, char **argv) {
     g_test_add_func("/sort_engine/frame_size_mismatch", test_frame_capture_size_mismatch);
     g_test_add_func("/sort_engine/run_deterministic_algorithms", test_run_deterministic_algorithms);
     g_test_add_func("/sort_engine/bogo_limit", test_bogo_limit_error);
+    g_test_add_func("/sort_engine/invalid_algorithm", test_sort_run_algorithm_invalid_algorithm);
+    g_test_add_func("/sort_engine/custom_preconditions", test_custom_api_preconditions);
+    g_test_add_func("/sort_engine/bogo_small_success", test_bogo_small_input_success);
 
     return g_test_run();
 }
