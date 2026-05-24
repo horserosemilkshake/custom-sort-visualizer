@@ -100,8 +100,7 @@ static bool parse_values_line(FILE *in, int *arr, size_t n) {
     }
 
     size_t count = 0;
-    char *saveptr = NULL;
-    char *tok = strtok_r(line, ",\n", &saveptr);
+    char *tok = strtok(line, ",\n");
     while (tok) {
         while (*tok == ' ' || *tok == '\t') {
             ++tok;
@@ -119,7 +118,7 @@ static bool parse_values_line(FILE *in, int *arr, size_t n) {
         }
 
         arr[count++] = (int)v;
-        tok = strtok_r(NULL, ",\n", &saveptr);
+        tok = strtok(NULL, ",\n");
     }
 
     ok = (count == n);

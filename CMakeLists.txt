@@ -54,8 +54,6 @@ target_link_libraries(sort-visualizer PRIVATE
 
 if(NOT WIN32)
 target_link_libraries(sort-visualizer-worker PRIVATE
-    ${GTK3_LIBRARIES}
-    ${GMODULE_LIBRARIES}
     ${PLATFORM_DL_LIB}
 )
 endif()
@@ -65,23 +63,13 @@ target_link_directories(sort-visualizer PRIVATE ${GMODULE_LIBRARY_DIRS})
 target_link_options(sort-visualizer PRIVATE ${GTK3_LDFLAGS_OTHER} ${GMODULE_LDFLAGS_OTHER})
 
 if(NOT WIN32)
-target_include_directories(sort-visualizer-worker PRIVATE
-    include
-    ${GTK3_INCLUDE_DIRS}
-    ${GMODULE_INCLUDE_DIRS}
-)
+target_include_directories(sort-visualizer-worker PRIVATE include)
 
 target_compile_options(sort-visualizer-worker PRIVATE
     -Wall
     -Wextra
     -Wpedantic
-    ${GTK3_CFLAGS_OTHER}
-    ${GMODULE_CFLAGS_OTHER}
 )
-
-target_link_directories(sort-visualizer-worker PRIVATE ${GTK3_LIBRARY_DIRS})
-target_link_directories(sort-visualizer-worker PRIVATE ${GMODULE_LIBRARY_DIRS})
-target_link_options(sort-visualizer-worker PRIVATE ${GTK3_LDFLAGS_OTHER} ${GMODULE_LDFLAGS_OTHER})
 endif()
 
 if(BUILD_TESTING)
