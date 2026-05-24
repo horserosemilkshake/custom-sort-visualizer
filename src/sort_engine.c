@@ -974,6 +974,43 @@ static gboolean consume_worker_buffer(
         }
     }
 }
+
+static gboolean append_fd_to_buffer(int fd, GString *buffer, gsize max_len, GError **error) {
+    char chunk[4096];
+
+    while (TRUE) {
+        ssize_t nr = read(fd, chunk, sizeof(chunk));
+        if (nr > 0) {
+            if (max_len > 0 && buffer->len >= max_len) {
+                continue;
+            }
+
+            gsize to_append = (gsize)nr;
+            if (max_len > 0 && buffer->len + to_append > max_len) {
+                to_append = max_len - buffer->len;
+            }
+            if (to_append > 0) {
+                g_string_append_len(buffer, chunk, to_append);
+            }
+            continue;
+        }
+
+        if (nr == 0) {
+            return TRUE;
+        }
+
+        if (errno == EINTR) {
+            continue;
+        }
+
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return TRUE;
+        }
+
+        g_set_error(error, sort_error_quark(), 1, "IPC read failed while waiting for custom worker");
+        return FALSE;
+    }
+}
 #endif
 
 typedef struct {
@@ -1132,9 +1169,9 @@ gboolean custom_sort_run(CustomSortHandle *handle, const int *input, size_t n, S
 
         struct pollfd fds[2];
         fds[0].fd = stdout_fd;
-        fds[0].events = POLLIN;
+        fds[0].events = POLLIN | POLLHUP | POLLERR;
         fds[1].fd = stderr_fd;
-        fds[1].events = POLLIN;
+        fds[1].events = POLLIN | POLLHUP | POLLERR;
 
         int poll_timeout = 50;
         int pr = poll(fds, 2, poll_timeout);
@@ -1145,23 +1182,21 @@ gboolean custom_sort_run(CustomSortHandle *handle, const int *input, size_t n, S
         }
 
         if (pr > 0) {
-            if (fds[0].revents & POLLIN) {
-                char buf[4096];
-                ssize_t nr = read(stdout_fd, buf, sizeof(buf));
-                if (nr > 0) {
-                    g_string_append_len(stdout_buf, buf, nr);
-                    if (!consume_worker_buffer(stdout_buf, n, frames, tmp_values, &result_code, &saw_result, &worker_error, error)) {
-                        ok = FALSE;
-                        break;
-                    }
+            if (fds[0].revents & (POLLIN | POLLHUP | POLLERR)) {
+                if (!append_fd_to_buffer(stdout_fd, stdout_buf, 0, error)) {
+                    ok = FALSE;
+                    break;
+                }
+                if (!consume_worker_buffer(stdout_buf, n, frames, tmp_values, &result_code, &saw_result, &worker_error, error)) {
+                    ok = FALSE;
+                    break;
                 }
             }
 
-            if (fds[1].revents & POLLIN) {
-                char buf[1024];
-                ssize_t nr = read(stderr_fd, buf, sizeof(buf));
-                if (nr > 0 && stderr_buf->len < 32768) {
-                    g_string_append_len(stderr_buf, buf, nr);
+            if (fds[1].revents & (POLLIN | POLLHUP | POLLERR)) {
+                if (!append_fd_to_buffer(stderr_fd, stderr_buf, 32768, error)) {
+                    ok = FALSE;
+                    break;
                 }
             }
         }
@@ -1169,6 +1204,17 @@ gboolean custom_sort_run(CustomSortHandle *handle, const int *input, size_t n, S
         pid_t wr = waitpid(pid, &status, WNOHANG);
         if (wr == pid) {
             child_exited = TRUE;
+        }
+    }
+
+    if (ok) {
+        if (!append_fd_to_buffer(stdout_fd, stdout_buf, 0, error)) {
+            ok = FALSE;
+        }
+    }
+    if (ok) {
+        if (!append_fd_to_buffer(stderr_fd, stderr_buf, 32768, error)) {
+            ok = FALSE;
         }
     }
 

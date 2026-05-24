@@ -19,6 +19,7 @@ static void test_custom_sort_compile_and_run(void) {
     GError *error = NULL;
 
     int input[] = {10, -1, 7, 3, 2, 9};
+    int input_second[] = {4, 4, -3, 12, 0, 8, -1};
 
     custom_sort_handle_init(&handle);
     sort_frames_init(&frames);
@@ -32,6 +33,14 @@ static void test_custom_sort_compile_and_run(void) {
     g_assert_cmpuint(frames.frame_count, >, 0);
     g_assert_cmpuint(frames.n, ==, G_N_ELEMENTS(input));
     g_assert_cmpmem(frames.frames[0], sizeof(input), input, sizeof(input));
+    g_assert_true(array_is_sorted(frames.frames[frames.frame_count - 1], frames.n));
+
+    g_assert_true(custom_sort_run(&handle, input_second, G_N_ELEMENTS(input_second), &frames, &error));
+    g_assert_no_error(error);
+
+    g_assert_cmpuint(frames.frame_count, >, 0);
+    g_assert_cmpuint(frames.n, ==, G_N_ELEMENTS(input_second));
+    g_assert_cmpmem(frames.frames[0], sizeof(input_second), input_second, sizeof(input_second));
     g_assert_true(array_is_sorted(frames.frames[frames.frame_count - 1], frames.n));
 
     sort_frames_clear(&frames);
