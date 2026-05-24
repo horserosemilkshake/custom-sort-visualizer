@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Custom Sort Visualizer
+Comment=Visualize built-in and custom C sorting algorithms
+Exec=sort-visualizer
+Icon=sort-visualizer
+Categories=Education;Development;
+Terminal=false

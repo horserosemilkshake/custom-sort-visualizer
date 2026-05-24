@@ -58,6 +58,32 @@ make
 ./sort-visualizer
 ```
 
+## Release Packaging
+
+This repository includes release scripts and a dedicated GitHub Actions workflow for shipping Linux and Windows binaries.
+
+Linux AppImage:
+
+```bash
+bash scripts/release/build_appimage.sh
+```
+
+The script writes the final AppImage to `dist/`.
+
+Windows `.exe` bundle (run in MSYS2 MinGW64 shell):
+
+```bash
+bash scripts/release/build_windows_bundle_msys2.sh
+```
+
+The script writes `sort-visualizer.exe` and required runtime DLLs to `dist/windows/`.
+
+Automated release builds:
+
+- Workflow file: `.github/workflows/release.yml`
+- Triggers: manual run (`workflow_dispatch`) and tags matching `v*`
+- Outputs: Linux AppImage artifact and Windows bundle artifact, with tagged runs also publishing release assets.
+
 ## Using the Application
 
 After launch, choose an algorithm from the algorithm selector and enter integers using commas or spaces. Press Start to execute and animate the selected algorithm. You can adjust the frame delay slider between 1 ms and 2000 ms to speed up or slow down playback, and speed changes apply immediately while playback is active.

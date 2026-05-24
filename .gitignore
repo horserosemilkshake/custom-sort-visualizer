@@ -1,6 +1,10 @@
 # Build directories
 build/
 cmake-build-*/
+build-release-*/
+AppDir/
+dist/
+.tools/
 
 # CMake generated files
 CMakeCache.txt

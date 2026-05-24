@@ -27,6 +27,11 @@ add_executable(sort-visualizer-worker
 )
 endif()
 
+install(TARGETS sort-visualizer RUNTIME DESTINATION bin)
+if(NOT WIN32)
+install(TARGETS sort-visualizer-worker RUNTIME DESTINATION bin)
+endif()
+
 target_include_directories(sort-visualizer PRIVATE
     include
     ${GTK3_INCLUDE_DIRS}
