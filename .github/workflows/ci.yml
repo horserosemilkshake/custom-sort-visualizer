@@ -126,7 +126,7 @@ jobs:
           import subprocess
           from pathlib import Path
 
-          build_dir = Path("build-coverage")
+          build_dir = Path("build-coverage").resolve()
           patterns = [
               "*/src/sort_engine.c.gcda",
               "*/tests/unit_main_helpers_test.c.gcda",
@@ -143,9 +143,10 @@ jobs:
           file_re = re.compile(r"^File '(.+)'$")
           path_re = re.compile(r"^Prime paths covered:([0-9]+\.?[0-9]*)% of ([0-9]+)$")
 
-          for gcda in sorted(set(gcda_files)):
+            for gcda in sorted(set(gcda_files)):
+              rel_gcda = str(gcda.relative_to(build_dir))
               proc = subprocess.run(
-                  ["gcov", "-e", str(gcda)],
+                ["gcov", "-e", rel_gcda],
                   cwd=build_dir,
                   stdout=subprocess.PIPE,
                   stderr=subprocess.DEVNULL,
@@ -181,10 +182,10 @@ jobs:
               short = src.split("/custom-sort-visualizer/")[-1]
               print(f"{short}: {pct:.1f}% ({covered} / {total})")
 
-            print("----------------------------------------------------")
-            if total_all == 0:
+          print("----------------------------------------------------")
+          if total_all == 0:
               print("Overall: unavailable (compiler/path instrumentation does not provide prime-path data)")
-            else:
+          else:
               overall = 100.0 * total_cov / total_all
               print(f"Overall: {overall:.1f}% ({total_cov} / {total_all})")
           PY
