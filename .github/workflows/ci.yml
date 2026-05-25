@@ -147,28 +147,28 @@ jobs:
               rel_gcda = str(gcda.relative_to(build_dir))
               proc = subprocess.run(
                 ["gcov", "-e", rel_gcda],
-                  cwd=build_dir,
-                  stdout=subprocess.PIPE,
-                  stderr=subprocess.DEVNULL,
-                  text=True,
-                  check=False,
+                cwd=build_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                check=False,
               )
               current_file = None
               for line in proc.stdout.splitlines():
-                  fm = file_re.match(line.strip())
-                  if fm:
-                      current_file = fm.group(1)
-                      continue
-                  pm = path_re.match(line.strip())
-                  if pm and current_file:
-                      if not (current_file.endswith("/src/main.c") or current_file.endswith("/src/sort_engine.c")):
-                          continue
-                      pct = float(pm.group(1))
-                      total = int(pm.group(2))
-                      covered = int(round((pct / 100.0) * total))
-                      prev = per_source.get(current_file)
-                      if prev is None or covered > prev[0]:
-                          per_source[current_file] = (covered, total)
+                fm = file_re.match(line.strip())
+                if fm:
+                  current_file = fm.group(1)
+                  continue
+                pm = path_re.match(line.strip())
+                if pm and current_file:
+                  if not (current_file.endswith("/src/main.c") or current_file.endswith("/src/sort_engine.c")):
+                    continue
+                  pct = float(pm.group(1))
+                  total = int(pm.group(2))
+                  covered = int(round((pct / 100.0) * total))
+                  prev = per_source.get(current_file)
+                  if prev is None or covered > prev[0]:
+                    per_source[current_file] = (covered, total)
 
           print("Prime Path Coverage Summary (best per source object)")
           print("====================================================")
