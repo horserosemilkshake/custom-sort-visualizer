@@ -90,6 +90,13 @@ jobs:
 
       - name: Generate branch coverage (gcovr)
         run: |
+          if gcovr --help | grep -q -- '--html-metric'; then
+            HTML_BRANCH_ARGS='--html-metric branch'
+          else
+            # Older gcovr versions don't support --html-metric; --branches enables branch-oriented reporting.
+            HTML_BRANCH_ARGS='--branches'
+          fi
+
           gcovr \
             --root . \
             --object-directory build-coverage \
@@ -110,7 +117,7 @@ jobs:
             --exclude-branches-by-pattern 'GCOVR_EXCL_BR_LINE' \
             --html-details build-coverage/gcovr-branch-coverage.html \
             --html-title "sort-visualizer branch coverage" \
-            --html-metric branch
+            ${HTML_BRANCH_ARGS}
 
       - name: Generate prime-path coverage (gcov)
         run: |
