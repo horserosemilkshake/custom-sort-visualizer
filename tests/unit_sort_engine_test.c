@@ -24,6 +24,15 @@ static void test_algorithm_registry(void) {
     g_assert_null(sort_find_algorithm("does-not-exist"));
 }
 
+static void test_algorithm_registry_null_count(void) {
+    const SortAlgorithm *algos = sort_get_algorithms(NULL);
+    g_assert_nonnull(algos);
+}
+
+static void test_frames_clear_null(void) {
+    sort_frames_clear(NULL);
+}
+
 static void test_frame_capture_size_mismatch(void) {
     SortFrames frames;
     GError *error = NULL;
@@ -38,6 +47,22 @@ static void test_frame_capture_size_mismatch(void) {
     g_assert_false(sort_frames_capture(&frames, second, G_N_ELEMENTS(second), &error));
     g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
     g_assert_nonnull(strstr(error->message, "Frame size mismatch"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+}
+
+static void test_frame_capture_single_element(void) {
+    SortFrames frames;
+    GError *error = NULL;
+    int one[] = {7};
+
+    sort_frames_init(&frames);
+
+    g_assert_true(sort_frames_capture(&frames, one, G_N_ELEMENTS(one), &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, ==, 1);
+    g_assert_cmpuint(frames.n, ==, G_N_ELEMENTS(one));
 
     g_clear_error(&error);
     sort_frames_clear(&frames);
@@ -147,6 +172,67 @@ static void test_custom_api_preconditions(void) {
     custom_sort_handle_clear(&handle);
 }
 
+static void test_custom_api_null_inputs(void) {
+    GError *error = NULL;
+    CustomSortHandle handle;
+
+    custom_sort_handle_init(&handle);
+
+    g_assert_false(custom_sort_compile(NULL, custom_sort_template(), &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "Custom code cannot be empty"));
+    g_clear_error(&error);
+
+    g_assert_false(custom_sort_compile(&handle, NULL, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "Custom code cannot be empty"));
+    g_clear_error(&error);
+
+    custom_sort_handle_clear(NULL);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_run_single_element_algorithms(void) {
+    static const char *algorithm_ids[] = {
+        "quick",
+        "merge",
+        "heap",
+        "bubble",
+        "selection",
+        "insertion",
+        "gnome",
+        "shaker",
+        "odd_even",
+        "pancake",
+        "bitonic",
+        "radix",
+        "shell",
+        "comb",
+        "stooge",
+        "bogo",
+    };
+
+    int input[] = {42};
+
+    for (size_t i = 0; i < G_N_ELEMENTS(algorithm_ids); ++i) {
+        const SortAlgorithm *algo = sort_find_algorithm(algorithm_ids[i]);
+        SortFrames frames;
+        GError *error = NULL;
+
+        g_assert_nonnull(algo);
+        sort_frames_init(&frames);
+
+        g_assert_true(sort_run_algorithm(algo, input, G_N_ELEMENTS(input), &frames, &error));
+        g_assert_no_error(error);
+        g_assert_cmpuint(frames.frame_count, >, 0);
+        g_assert_cmpuint(frames.n, ==, G_N_ELEMENTS(input));
+        g_assert_cmpint(frames.frames[frames.frame_count - 1][0], ==, 42);
+
+        g_clear_error(&error);
+        sort_frames_clear(&frames);
+    }
+}
+
 static void test_bogo_small_input_success(void) {
     SortFrames frames;
     GError *error = NULL;
@@ -169,11 +255,16 @@ int main(int argc, char **argv) {
     g_test_init(&argc, &argv, NULL);
 
     g_test_add_func("/sort_engine/registry", test_algorithm_registry);
+    g_test_add_func("/sort_engine/registry_null_count", test_algorithm_registry_null_count);
+    g_test_add_func("/sort_engine/frames_clear_null", test_frames_clear_null);
     g_test_add_func("/sort_engine/frame_size_mismatch", test_frame_capture_size_mismatch);
+    g_test_add_func("/sort_engine/frame_single_element", test_frame_capture_single_element);
     g_test_add_func("/sort_engine/run_deterministic_algorithms", test_run_deterministic_algorithms);
+    g_test_add_func("/sort_engine/run_single_element_algorithms", test_run_single_element_algorithms);
     g_test_add_func("/sort_engine/bogo_limit", test_bogo_limit_error);
     g_test_add_func("/sort_engine/invalid_algorithm", test_sort_run_algorithm_invalid_algorithm);
     g_test_add_func("/sort_engine/custom_preconditions", test_custom_api_preconditions);
+    g_test_add_func("/sort_engine/custom_null_inputs", test_custom_api_null_inputs);
     g_test_add_func("/sort_engine/bogo_small_success", test_bogo_small_input_success);
 
     return g_test_run();

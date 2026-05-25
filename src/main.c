@@ -861,6 +861,26 @@ static void on_randomize_clicked(GtkButton *button, gpointer user_data) {
     set_status(app, tr(app->language, "status_random_generated"));
 }
 
+static void set_status_from_error(AppState *app, GError **error, const char *fallback_key) {
+    if (error && *error && (*error)->message) { /* GCOVR_EXCL_BR_LINE */
+        gchar *localized = translate_runtime_error(app, (*error)->message);
+        set_status(app, localized);
+        g_free(localized); /* GCOVR_EXCL_BR_LINE */
+    } else {
+        set_status(app, tr(app->language, fallback_key)); /* LCOV_EXCL_LINE */
+    }
+    g_clear_error(error);
+}
+
+static gboolean run_selected_algorithm(AppState *app, const gchar *id, const int *input, size_t n, GError **error) {
+    if (g_strcmp0(id, "custom") == 0) {
+        return custom_sort_run(&app->custom_handle, input, n, &app->playback_frames, error);
+    }
+
+    const SortAlgorithm *algo = sort_find_algorithm(id);
+    return sort_run_algorithm(algo, input, n, &app->playback_frames, error);
+}
+
 static void on_start_clicked(GtkButton *button, gpointer user_data) {
     (void)button;
     AppState *app = (AppState *)user_data;
@@ -871,14 +891,7 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
     const gchar *text = gtk_entry_get_text(GTK_ENTRY(app->array_entry));
 
     if (!parse_array_input(text, &input, &n, &error)) {
-        if (error && error->message) { /* GCOVR_EXCL_BR_LINE */
-            gchar *localized = translate_runtime_error(app, error->message);
-            set_status(app, localized);
-            g_free(localized); /* GCOVR_EXCL_BR_LINE */
-        } else {
-            set_status(app, tr(app->language, "status_invalid_input")); /* LCOV_EXCL_LINE */
-        }
-        g_clear_error(&error);
+        set_status_from_error(app, &error, "status_invalid_input");
         return;
     }
 
@@ -891,25 +904,12 @@ static void on_start_clicked(GtkButton *button, gpointer user_data) {
 
     clear_playback(app);
 
-    gboolean ok = FALSE;
-    if (g_strcmp0(id, "custom") == 0) {
-        ok = custom_sort_run(&app->custom_handle, input, n, &app->playback_frames, &error);
-    } else {
-        const SortAlgorithm *algo = sort_find_algorithm(id);
-        ok = sort_run_algorithm(algo, input, n, &app->playback_frames, &error);
-    }
+    gboolean ok = run_selected_algorithm(app, id, input, n, &error);
 
     g_free(input); /* GCOVR_EXCL_BR_LINE */
 
     if (!ok) {
-        if (error && error->message) { /* GCOVR_EXCL_BR_LINE */
-            gchar *localized = translate_runtime_error(app, error->message);
-            set_status(app, localized);
-            g_free(localized); /* GCOVR_EXCL_BR_LINE */
-        } else {
-            set_status(app, tr(app->language, "status_sort_failed")); /* LCOV_EXCL_LINE */
-        }
-        g_clear_error(&error);
+        set_status_from_error(app, &error, "status_sort_failed");
         clear_playback(app);
         return;
     }

@@ -913,38 +913,69 @@ static gboolean parse_frame_values(const gchar *payload, size_t n, int *values, 
     return TRUE;
 }
 
+typedef struct {
+    size_t n;
+    SortFrames *frames;
+    int *tmp_values;
+    int result_code;
+    gboolean saw_result;
+    gchar *worker_error;
+} WorkerParseState;
+
+static void worker_parse_state_init(WorkerParseState *state, size_t n, SortFrames *frames, int *tmp_values) {
+    state->n = n;
+    state->frames = frames;
+    state->tmp_values = tmp_values;
+    state->result_code = 0;
+    state->saw_result = FALSE;
+    state->worker_error = NULL;
+}
+
+static void worker_parse_state_clear(WorkerParseState *state) {
+    g_free(state->worker_error); /* GCOVR_EXCL_BR_LINE */
+    state->worker_error = NULL;
+}
+
+static gboolean process_frame_line(const gchar *line, WorkerParseState *state, GError **error) {
+    if (!parse_frame_values(line + 6, state->n, state->tmp_values, error)) {
+        return FALSE;
+    }
+    return sort_frames_capture(state->frames, state->tmp_values, state->n, error);
+}
+
+static gboolean process_result_line(const gchar *line, WorkerParseState *state, GError **error) {
+    gchar *endptr = NULL;
+    long code = strtol(line + 7, &endptr, 10);
+    if (endptr == line + 7 || *endptr != '\0' || code < INT_MIN || code > INT_MAX) { /* GCOVR_EXCL_BR_LINE */
+        g_set_error(error, sort_error_quark(), 1, "Worker emitted invalid result line: %s", line);
+        return FALSE;
+    }
+
+    state->result_code = (int)code;
+    state->saw_result = TRUE;
+    return TRUE;
+}
+
+static gboolean process_error_line(const gchar *line, WorkerParseState *state) {
+    g_free(state->worker_error); /* GCOVR_EXCL_BR_LINE */
+    state->worker_error = g_strdup(line + 6);
+    return TRUE;
+}
+
 static gboolean process_worker_line(
     const gchar *line,
-    size_t n,
-    SortFrames *frames,
-    int *tmp_values,
-    int *result_code,
-    gboolean *saw_result,
-    gchar **worker_error,
+    WorkerParseState *state,
     GError **error) {
     if (g_str_has_prefix(line, "FRAME ")) { /* GCOVR_EXCL_BR_LINE */
-        if (!parse_frame_values(line + 6, n, tmp_values, error)) {
-            return FALSE;
-        }
-        return sort_frames_capture(frames, tmp_values, n, error);
+        return process_frame_line(line, state, error);
     }
 
     if (g_str_has_prefix(line, "RESULT ")) { /* GCOVR_EXCL_BR_LINE */
-        gchar *endptr = NULL;
-        long code = strtol(line + 7, &endptr, 10);
-        if (endptr == line + 7 || *endptr != '\0' || code < INT_MIN || code > INT_MAX) { /* GCOVR_EXCL_BR_LINE */
-            g_set_error(error, sort_error_quark(), 1, "Worker emitted invalid result line: %s", line);
-            return FALSE;
-        }
-        *result_code = (int)code;
-        *saw_result = TRUE;
-        return TRUE;
+        return process_result_line(line, state, error);
     }
 
     if (g_str_has_prefix(line, "ERROR ")) { /* GCOVR_EXCL_BR_LINE */
-        g_free(*worker_error); /* GCOVR_EXCL_BR_LINE */
-        *worker_error = g_strdup(line + 6);
-        return TRUE;
+        return process_error_line(line, state);
     }
 
     return TRUE; /* LCOV_EXCL_LINE */
@@ -952,12 +983,7 @@ static gboolean process_worker_line(
 
 static gboolean consume_worker_buffer(
     GString *buffer,
-    size_t n,
-    SortFrames *frames,
-    int *tmp_values,
-    int *result_code,
-    gboolean *saw_result,
-    gchar **worker_error,
+    WorkerParseState *state,
     GError **error) {
     while (TRUE) {
         gchar *newline = strchr(buffer->str, '\n');
@@ -969,7 +995,7 @@ static gboolean consume_worker_buffer(
         gchar *line = g_strndup(buffer->str, line_len);
         g_string_erase(buffer, 0, line_len + 1);
 
-        gboolean ok = process_worker_line(line, n, frames, tmp_values, result_code, saw_result, worker_error, error);
+        gboolean ok = process_worker_line(line, state, error);
         g_free(line); /* GCOVR_EXCL_BR_LINE */
         if (!ok) {
             return FALSE;
@@ -1012,6 +1038,197 @@ static gboolean append_fd_to_buffer(int fd, GString *buffer, gsize max_len, GErr
         g_set_error(error, sort_error_quark(), 1, "IPC read failed while waiting for custom worker"); /* LCOV_EXCL_LINE */
         return FALSE; /* LCOV_EXCL_LINE */
     }
+}
+
+static gboolean spawn_custom_worker_process(
+    const char *library_path,
+    GPid *pid,
+    gint *stdin_fd,
+    gint *stdout_fd,
+    gint *stderr_fd,
+    GError **error) {
+    gchar *worker_path = resolve_worker_path();
+    gchar *argv[] = {worker_path, (gchar *)library_path, NULL};
+
+    gboolean spawned = g_spawn_async_with_pipes(
+        NULL,
+        argv,
+        NULL,
+        G_SPAWN_DO_NOT_REAP_CHILD,
+        NULL,
+        NULL,
+        pid,
+        stdin_fd,
+        stdout_fd,
+        stderr_fd,
+        error);
+
+    g_free(worker_path); /* GCOVR_EXCL_BR_LINE */
+    return spawned;
+}
+
+static gboolean send_custom_worker_input(int stdin_fd, const int *work, size_t n, GError **error) {
+    GString *input_buf = g_string_new(NULL);
+    g_string_append_printf(input_buf, "%zu\n", n);
+    for (size_t i = 0; i < n; ++i) {
+        if (i > 0) {
+            g_string_append_c(input_buf, ',');
+        }
+        g_string_append_printf(input_buf, "%d", work[i]);
+    }
+    g_string_append_c(input_buf, '\n');
+
+    gboolean wrote_ok = write_all_fd(stdin_fd, input_buf->str, input_buf->len);
+    g_string_free(input_buf, TRUE);
+
+    if (!wrote_ok) { /* GCOVR_EXCL_BR_LINE */
+        g_set_error(error, sort_error_quark(), 1, "Failed to send input to custom worker"); /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+    }
+
+    return TRUE;
+}
+
+static gboolean set_fd_nonblocking(int fd, GError **error) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) { /* GCOVR_EXCL_BR_LINE */
+        g_set_error(error, sort_error_quark(), 1, "Failed to configure worker pipe"); /* LCOV_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */
+    }
+
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) { /* GCOVR_EXCL_BR_LINE */
+        g_set_error(error, sort_error_quark(), 1, "Failed to configure worker pipe"); /* LCOV_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */
+    }
+
+    return TRUE;
+}
+
+static gboolean pump_custom_worker_until_exit(
+    GPid pid,
+    gint stdout_fd,
+    gint stderr_fd,
+    WorkerParseState *state,
+    GString *stdout_buf,
+    GString *stderr_buf,
+    gboolean *timed_out,
+    gint *status,
+    GError **error) {
+    gint64 start_us = g_get_monotonic_time();
+    gboolean child_exited = FALSE;
+
+    while (!child_exited) {
+        gint64 elapsed_ms = (g_get_monotonic_time() - start_us) / 1000;
+        if (elapsed_ms > CUSTOM_WORKER_TIMEOUT_MS) {
+            *timed_out = TRUE;
+            kill(pid, SIGKILL);
+            waitpid(pid, status, 0);
+            child_exited = TRUE;
+            continue;
+        }
+
+        struct pollfd fds[2];
+        fds[0].fd = stdout_fd;
+        fds[0].events = POLLIN | POLLHUP | POLLERR;
+        fds[1].fd = stderr_fd;
+        fds[1].events = POLLIN | POLLHUP | POLLERR;
+
+        int pr = poll(fds, 2, 50);
+        if (pr < 0 && errno != EINTR) { /* GCOVR_EXCL_BR_LINE */ /* LCOV_EXCL_LINE */
+            g_set_error(error, sort_error_quark(), 1, "IPC poll failed while waiting for custom worker"); /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+            return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+        }
+
+        if (pr > 0) {
+            if (fds[0].revents & (POLLIN | POLLHUP | POLLERR)) { /* GCOVR_EXCL_BR_LINE */
+                if (!append_fd_to_buffer(stdout_fd, stdout_buf, 0, error)) { /* GCOVR_EXCL_BR_LINE */
+                    return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+                }
+                if (!consume_worker_buffer(stdout_buf, state, error)) {
+                    return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+                }
+            }
+
+            if (fds[1].revents & (POLLIN | POLLHUP | POLLERR)) {
+                if (!append_fd_to_buffer(stderr_fd, stderr_buf, 32768, error)) { /* GCOVR_EXCL_BR_LINE */
+                    return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+                }
+            }
+        }
+
+        pid_t wr = waitpid(pid, status, WNOHANG);
+        if (wr == pid) {
+            child_exited = TRUE;
+        }
+    }
+
+    return TRUE;
+}
+
+static gboolean drain_custom_worker_buffers(
+    gint stdout_fd,
+    gint stderr_fd,
+    WorkerParseState *state,
+    GString *stdout_buf,
+    GString *stderr_buf,
+    GError **error) {
+    if (!append_fd_to_buffer(stdout_fd, stdout_buf, 0, error)) { /* GCOVR_EXCL_BR_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+    }
+
+    if (!append_fd_to_buffer(stderr_fd, stderr_buf, 32768, error)) { /* GCOVR_EXCL_BR_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+    }
+
+    if (stdout_buf->len > 0) { /* GCOVR_EXCL_BR_LINE */
+        if (!consume_worker_buffer(stdout_buf, state, error)) { /* GCOVR_EXCL_BR_LINE */ /* GCOVR_EXCL_LINE */
+            return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+        }
+    }
+
+    return TRUE;
+}
+
+static void append_worker_stderr_to_error(GString *stderr_buf, GError **error) {
+    if (stderr_buf->len > 0 && error && *error) { /* GCOVR_EXCL_BR_LINE */
+        gchar *msg = g_strdup_printf("%s\nWorker stderr:\n%s", (*error)->message, stderr_buf->str); /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+        g_clear_error(error); /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+        g_set_error(error, sort_error_quark(), 1, "%s", msg); /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+        g_free(msg); /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+    }
+}
+
+static gboolean validate_custom_worker_outcome(
+    gboolean timed_out,
+    const WorkerParseState *state,
+    const SortFrames *frames,
+    GError **error) {
+    if (timed_out) {
+        g_set_error(error, sort_error_quark(), 1, "Custom sort timed out after %d ms", CUSTOM_WORKER_TIMEOUT_MS); /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+    }
+
+    if (state->worker_error) {
+        g_set_error(error, sort_error_quark(), 1, "%s", state->worker_error);
+        return FALSE;
+    }
+
+    if (!state->saw_result) {
+        g_set_error(error, sort_error_quark(), 1, "Custom worker exited without a result line");
+        return FALSE;
+    }
+
+    if (state->result_code != 0) {
+        g_set_error(error, sort_error_quark(), 1, "custom_sort returned error code %d", state->result_code);
+        return FALSE;
+    }
+
+    if (frames->frame_count == 0) { /* GCOVR_EXCL_BR_LINE */
+        g_set_error(error, sort_error_quark(), 1, "Custom worker did not emit any frames"); /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */ /* GCOVR_EXCL_LINE */
+    }
+
+    return TRUE;
 }
 #endif
 
@@ -1091,45 +1308,17 @@ gboolean custom_sort_run(CustomSortHandle *handle, const int *input, size_t n, S
     return TRUE;
 #else
     /* LCOV_EXCL_START */
-    gchar *worker_path = resolve_worker_path();
-    gchar *argv[] = {worker_path, handle->library_path, NULL};
-
     GPid pid = 0;
     gint stdin_fd = -1;
     gint stdout_fd = -1;
     gint stderr_fd = -1;
 
-    if (!g_spawn_async_with_pipes( /* GCOVR_EXCL_BR_LINE */
-            NULL,
-            argv,
-            NULL,
-            G_SPAWN_DO_NOT_REAP_CHILD,
-            NULL,
-            NULL,
-            &pid,
-            &stdin_fd,
-            &stdout_fd,
-            &stderr_fd,
-            error)) {
-        g_free(worker_path); /* GCOVR_EXCL_BR_LINE */
+    if (!spawn_custom_worker_process(handle->library_path, &pid, &stdin_fd, &stdout_fd, &stderr_fd, error)) { /* GCOVR_EXCL_BR_LINE */
         g_free(work); /* GCOVR_EXCL_BR_LINE */
         return FALSE;
     }
 
-    g_free(worker_path); /* GCOVR_EXCL_BR_LINE */
-
-    GString *input_buf = g_string_new(NULL);
-    g_string_append_printf(input_buf, "%zu\n", n);
-    for (size_t i = 0; i < n; ++i) {
-        if (i > 0) {
-            g_string_append_c(input_buf, ',');
-        }
-        g_string_append_printf(input_buf, "%d", work[i]);
-    }
-    g_string_append_c(input_buf, '\n');
-
-    gboolean wrote_ok = write_all_fd(stdin_fd, input_buf->str, input_buf->len);
-    g_string_free(input_buf, TRUE);
+    gboolean wrote_ok = send_custom_worker_input(stdin_fd, work, n, error);
     close(stdin_fd);
     stdin_fd = -1;
 
@@ -1139,134 +1328,70 @@ gboolean custom_sort_run(CustomSortHandle *handle, const int *input, size_t n, S
         g_spawn_close_pid(pid);
         close(stdout_fd);
         close(stderr_fd);
-        g_set_error(error, sort_error_quark(), 1, "Failed to send input to custom worker");
         g_free(work); /* GCOVR_EXCL_BR_LINE */
         return FALSE;
     }
 
-    fcntl(stdout_fd, F_SETFL, fcntl(stdout_fd, F_GETFL, 0) | O_NONBLOCK);
-    fcntl(stderr_fd, F_SETFL, fcntl(stderr_fd, F_GETFL, 0) | O_NONBLOCK);
+    if (!set_fd_nonblocking(stdout_fd, error) || !set_fd_nonblocking(stderr_fd, error)) {
+        kill(pid, SIGKILL);
+        waitpid(pid, NULL, 0);
+        close(stdout_fd);
+        close(stderr_fd);
+        g_spawn_close_pid(pid);
+        g_free(work);
+        return FALSE;
+    }
 
     GString *stdout_buf = g_string_new(NULL);
     GString *stderr_buf = g_string_new(NULL);
-    gchar *worker_error = NULL;
     int *tmp_values = g_new(int, n);
-    int result_code = 0;
-    gboolean saw_result = FALSE;
+    WorkerParseState parse_state;
+    worker_parse_state_init(&parse_state, n, frames, tmp_values);
     gboolean ok = TRUE;
     gboolean timed_out = FALSE;
 
-    gint64 start_us = g_get_monotonic_time();
     gint status = 0;
-    gboolean child_exited = FALSE;
-
-    while (!child_exited) {
-        gint64 elapsed_ms = (g_get_monotonic_time() - start_us) / 1000;
-        if (elapsed_ms > CUSTOM_WORKER_TIMEOUT_MS) {
-            timed_out = TRUE;
-            kill(pid, SIGKILL);
-            waitpid(pid, &status, 0);
-            child_exited = TRUE;
-            break;
-        }
-
-        struct pollfd fds[2];
-        fds[0].fd = stdout_fd;
-        fds[0].events = POLLIN | POLLHUP | POLLERR;
-        fds[1].fd = stderr_fd;
-        fds[1].events = POLLIN | POLLHUP | POLLERR;
-
-        int poll_timeout = 50;
-        int pr = poll(fds, 2, poll_timeout);
-        if (pr < 0 && errno != EINTR) { /* GCOVR_EXCL_BR_LINE */
-            g_set_error(error, sort_error_quark(), 1, "IPC poll failed while waiting for custom worker");
-            ok = FALSE;
-            break;
-        }
-
-        if (pr > 0) {
-            if (fds[0].revents & (POLLIN | POLLHUP | POLLERR)) { /* GCOVR_EXCL_BR_LINE */
-                if (!append_fd_to_buffer(stdout_fd, stdout_buf, 0, error)) { /* GCOVR_EXCL_BR_LINE */
-                    ok = FALSE;
-                    break;
-                }
-                if (!consume_worker_buffer(stdout_buf, n, frames, tmp_values, &result_code, &saw_result, &worker_error, error)) {
-                    ok = FALSE;
-                    break;
-                }
-            }
-
-            if (fds[1].revents & (POLLIN | POLLHUP | POLLERR)) {
-                if (!append_fd_to_buffer(stderr_fd, stderr_buf, 32768, error)) { /* GCOVR_EXCL_BR_LINE */
-                    ok = FALSE;
-                    break;
-                }
-            }
-        }
-
-        pid_t wr = waitpid(pid, &status, WNOHANG);
-        if (wr == pid) {
-            child_exited = TRUE;
-        }
+    if (!pump_custom_worker_until_exit(
+            pid,
+            stdout_fd,
+            stderr_fd,
+            &parse_state,
+            stdout_buf,
+            stderr_buf,
+            &timed_out,
+            &status,
+            error)) {
+        ok = FALSE;
     }
 
     if (ok) {
-        if (!append_fd_to_buffer(stdout_fd, stdout_buf, 0, error)) { /* GCOVR_EXCL_BR_LINE */
-            ok = FALSE;
-        }
-    }
-    if (ok) {
-        if (!append_fd_to_buffer(stderr_fd, stderr_buf, 32768, error)) { /* GCOVR_EXCL_BR_LINE */
-            ok = FALSE;
-        }
+        ok = drain_custom_worker_buffers(
+            stdout_fd,
+            stderr_fd,
+            &parse_state,
+            stdout_buf,
+            stderr_buf,
+            error);
     }
 
     close(stdout_fd);
     close(stderr_fd);
     g_spawn_close_pid(pid);
 
-    if (ok && stdout_buf->len > 0) { /* GCOVR_EXCL_BR_LINE */
-        if (!consume_worker_buffer(stdout_buf, n, frames, tmp_values, &result_code, &saw_result, &worker_error, error)) { /* GCOVR_EXCL_BR_LINE */
-            ok = FALSE;
-        }
-    }
-
     g_string_free(stdout_buf, TRUE);
 
-    if (timed_out) {
+    if (ok) {
+        ok = validate_custom_worker_outcome(timed_out, &parse_state, frames, error);
+    } else if (timed_out) {
         g_set_error(error, sort_error_quark(), 1, "Custom sort timed out after %d ms", CUSTOM_WORKER_TIMEOUT_MS);
-        ok = FALSE;
     }
 
-    if (ok && worker_error) {
-        g_set_error(error, sort_error_quark(), 1, "%s", worker_error);
-        ok = FALSE;
-    }
-
-    if (ok && !saw_result) {
-        g_set_error(error, sort_error_quark(), 1, "Custom worker exited without a result line");
-        ok = FALSE;
-    }
-
-    if (ok && result_code != 0) {
-        g_set_error(error, sort_error_quark(), 1, "custom_sort returned error code %d", result_code);
-        ok = FALSE;
-    }
-
-    if (ok && frames->frame_count == 0) { /* GCOVR_EXCL_BR_LINE */
-        g_set_error(error, sort_error_quark(), 1, "Custom worker did not emit any frames");
-        ok = FALSE;
-    }
-
-    if (!ok && stderr_buf->len > 0 && error && *error) { /* GCOVR_EXCL_BR_LINE */
-        gchar *msg = g_strdup_printf("%s\nWorker stderr:\n%s", (*error)->message, stderr_buf->str);
-        g_clear_error(error);
-        g_set_error(error, sort_error_quark(), 1, "%s", msg);
-        g_free(msg); /* GCOVR_EXCL_BR_LINE */
+    if (!ok) {
+        append_worker_stderr_to_error(stderr_buf, error);
     }
 
     g_string_free(stderr_buf, TRUE);
-    g_free(worker_error); /* GCOVR_EXCL_BR_LINE */
+    worker_parse_state_clear(&parse_state);
     g_free(tmp_values); /* GCOVR_EXCL_BR_LINE */
     g_free(work); /* GCOVR_EXCL_BR_LINE */
     return ok;

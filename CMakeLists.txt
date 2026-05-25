@@ -6,6 +6,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 option(ENABLE_COVERAGE "Enable line coverage instrumentation" OFF)
+option(ENABLE_PATH_COVERAGE "Enable GCC prime-path coverage instrumentation" OFF)
 
 include(CTest)
 
@@ -26,6 +27,15 @@ if(ENABLE_COVERAGE)
         set(COVERAGE_COMPILE_OPTIONS -O0 -g --coverage)
         set(COVERAGE_LINK_OPTIONS --coverage)
         message(STATUS "Coverage instrumentation enabled")
+
+        if(ENABLE_PATH_COVERAGE)
+            if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+                list(APPEND COVERAGE_COMPILE_OPTIONS -fpath-coverage)
+                message(STATUS "Prime-path coverage instrumentation enabled")
+            else()
+                message(FATAL_ERROR "ENABLE_PATH_COVERAGE currently requires GCC")
+            endif()
+        endif()
     else()
         message(FATAL_ERROR "ENABLE_COVERAGE is only supported with GCC or Clang")
     endif()

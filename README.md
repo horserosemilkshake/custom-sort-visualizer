@@ -69,7 +69,7 @@ ctest --test-dir build --output-on-failure
 To generate line coverage, install `lcov` and run a dedicated coverage build:
 
 ```bash
-cmake -S . -B build-coverage -DENABLE_COVERAGE=ON
+cmake -S . -B build-coverage -DENABLE_COVERAGE=ON -DENABLE_PATH_COVERAGE=ON
 cmake --build build-coverage
 cmake --build build-coverage --target coverage
 ```
@@ -87,6 +87,7 @@ The CI workflow also publishes coverage outputs for each run of `Coverage (Linux
 
 - `coverage-html` artifact includes:
     - `coverage-summary.txt` (text summary from `gcovr --branches`)
+    - `path-coverage-summary.txt` (prime-path summary from `gcov -e`)
     - `coverage.info` (raw lcov data)
     - `coverage-html/` (HTML report)
     - `gcovr-branch-coverage.html` (branch-coverage HTML report)

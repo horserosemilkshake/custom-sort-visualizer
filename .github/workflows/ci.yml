@@ -80,7 +80,7 @@ jobs:
         run: python3 -m pip install --upgrade gcovr
 
       - name: Configure CMake (Coverage)
-        run: cmake -S . -B build-coverage -DENABLE_COVERAGE=ON
+        run: cmake -S . -B build-coverage -DENABLE_COVERAGE=ON -DENABLE_PATH_COVERAGE=ON
 
       - name: Build (Coverage)
         run: cmake --build build-coverage
@@ -94,19 +94,93 @@ jobs:
             --root . \
             --object-directory build-coverage \
             --filter 'src/(main|sort_engine)\.c$' \
+            --exclude-directories 'build-coverage/CMakeFiles/sort-visualizer\.dir' \
+            --exclude-directories 'build-coverage/CMakeFiles/sort-visualizer-worker\.dir' \
             --exclude-branches-by-pattern 'GCOVR_EXCL_BR_LINE' \
             --txt-summary \
-            --branches \
+            --txt-metric branch \
             > build-coverage/coverage-summary.txt
 
           gcovr \
             --root . \
             --object-directory build-coverage \
             --filter 'src/(main|sort_engine)\.c$' \
+            --exclude-directories 'build-coverage/CMakeFiles/sort-visualizer\.dir' \
+            --exclude-directories 'build-coverage/CMakeFiles/sort-visualizer-worker\.dir' \
             --exclude-branches-by-pattern 'GCOVR_EXCL_BR_LINE' \
             --html-details build-coverage/gcovr-branch-coverage.html \
             --html-title "sort-visualizer branch coverage" \
-            --branches
+            --html-metric branch
+
+      - name: Generate prime-path coverage (gcov)
+        run: |
+          python3 - <<'PY' > build-coverage/path-coverage-summary.txt
+          import re
+          import subprocess
+          from pathlib import Path
+
+          build_dir = Path("build-coverage")
+          patterns = [
+              "*/src/sort_engine.c.gcda",
+              "*/tests/unit_main_helpers_test.c.gcda",
+          ]
+
+          gcda_files = []
+          for pat in patterns:
+              gcda_files.extend(build_dir.glob(f"CMakeFiles/{pat}"))
+
+          if not gcda_files:
+              raise SystemExit("No gcda files found for prime-path summary")
+
+          per_source = {}
+          file_re = re.compile(r"^File '(.+)'$")
+          path_re = re.compile(r"^Prime paths covered:([0-9]+\.?[0-9]*)% of ([0-9]+)$")
+
+          for gcda in sorted(set(gcda_files)):
+              proc = subprocess.run(
+                  ["gcov", "-e", str(gcda)],
+                  cwd=build_dir,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.DEVNULL,
+                  text=True,
+                  check=False,
+              )
+              current_file = None
+              for line in proc.stdout.splitlines():
+                  fm = file_re.match(line.strip())
+                  if fm:
+                      current_file = fm.group(1)
+                      continue
+                  pm = path_re.match(line.strip())
+                  if pm and current_file:
+                      if not (current_file.endswith("/src/main.c") or current_file.endswith("/src/sort_engine.c")):
+                          continue
+                      pct = float(pm.group(1))
+                      total = int(pm.group(2))
+                      covered = int(round((pct / 100.0) * total))
+                      prev = per_source.get(current_file)
+                      if prev is None or covered > prev[0]:
+                          per_source[current_file] = (covered, total)
+
+          print("Prime Path Coverage Summary (best per source object)")
+          print("====================================================")
+          total_cov = 0
+          total_all = 0
+          for src in sorted(per_source):
+              covered, total = per_source[src]
+              total_cov += covered
+              total_all += total
+              pct = (100.0 * covered / total) if total else 0.0
+              short = src.split("/custom-sort-visualizer/")[-1]
+              print(f"{short}: {pct:.1f}% ({covered} / {total})")
+
+          if total_all == 0:
+              raise SystemExit("No prime-path totals found for src/main.c or src/sort_engine.c")
+
+          overall = 100.0 * total_cov / total_all
+          print("----------------------------------------------------")
+          print(f"Overall: {overall:.1f}% ({total_cov} / {total_all})")
+          PY
 
       - name: Export coverage summaries
         run: |
@@ -115,6 +189,12 @@ jobs:
             echo
             echo "\`\`\`text"
             cat build-coverage/coverage-summary.txt
+            echo "\`\`\`"
+            echo
+            echo "## Prime Path Coverage Summary (gcov)"
+            echo
+            echo "\`\`\`text"
+            cat build-coverage/path-coverage-summary.txt
             echo "\`\`\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -125,6 +205,7 @@ jobs:
           path: |
             build-coverage/coverage.info
             build-coverage/coverage-summary.txt
+            build-coverage/path-coverage-summary.txt
             build-coverage/coverage-html/
             build-coverage/gcovr-branch-coverage.html
 

@@ -118,6 +118,7 @@ static void test_swap_detection(void) {
     int current[] = {1, 2, 3, 4};
     int next_swap[] = {1, 3, 2, 4};
     int next_no_swap[] = {1, 3, 4, 2};
+    int next_single_diff[] = {1, 2, 3, 5};
     size_t a = 0;
     size_t b = 0;
 
@@ -126,6 +127,7 @@ static void test_swap_detection(void) {
     g_assert_cmpuint(b, ==, 2);
 
     g_assert_false(detect_upcoming_swap(current, next_no_swap, G_N_ELEMENTS(current), &a, &b));
+    g_assert_false(detect_upcoming_swap(current, next_single_diff, G_N_ELEMENTS(current), &a, &b));
 }
 
 static void test_parse_array_input_paths(void) {
@@ -157,6 +159,13 @@ static void test_parse_array_input_paths(void) {
     g_assert_nonnull(error);
     g_assert_nonnull(strstr(error->message, "did not contain any numbers"));
     g_clear_error(&error);
+
+    g_assert_true(parse_array_input(" 10, ,\t20\n", &arr, &n, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(n, ==, 2);
+    g_assert_cmpint(arr[0], ==, 10);
+    g_assert_cmpint(arr[1], ==, 20);
+    g_free(arr);
 }
 
 static void test_runtime_translation_passthrough(void) {
