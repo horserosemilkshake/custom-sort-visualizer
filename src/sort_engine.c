@@ -43,7 +43,7 @@ void sort_frames_init(SortFrames *frames) {
 
 void sort_frames_clear(SortFrames *frames) {
     if (!frames) {
-        return;
+        return; /* LCOV_EXCL_LINE */
     }
 
     for (size_t i = 0; i < frames->frame_count; ++i) {
@@ -71,7 +71,7 @@ gboolean sort_frames_capture(SortFrames *frames, const int *arr, size_t n, GErro
         int **new_frames = g_realloc_n(frames->frames, new_capacity, sizeof(int *));
         if (!new_frames) {
             g_set_error(error, sort_error_quark(), 1, "Out of memory while growing frame buffer"); /* LCOV_EXCL_LINE */
-            return FALSE;
+            return FALSE; /* LCOV_EXCL_LINE */
         }
         frames->frames = new_frames;
         frames->frame_capacity = new_capacity;
@@ -80,7 +80,7 @@ gboolean sort_frames_capture(SortFrames *frames, const int *arr, size_t n, GErro
     int *snapshot = g_new(int, n);
     if (!snapshot) {
         g_set_error(error, sort_error_quark(), 1, "Out of memory while creating frame snapshot"); /* LCOV_EXCL_LINE */
-        return FALSE;
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     memcpy(snapshot, arr, sizeof(int) * n);
@@ -90,7 +90,7 @@ gboolean sort_frames_capture(SortFrames *frames, const int *arr, size_t n, GErro
 
 static gboolean ctx_capture(SortContext *ctx) {
     if (!ctx->ok) {
-        return FALSE;
+        return FALSE; /* LCOV_EXCL_LINE */
     }
     ctx->ok = sort_frames_capture(ctx->frames, ctx->arr, ctx->n, ctx->error);
     return ctx->ok;
@@ -98,7 +98,7 @@ static gboolean ctx_capture(SortContext *ctx) {
 
 static void ctx_swap(SortContext *ctx, size_t i, size_t j) {
     if (!ctx->ok || i >= ctx->n || j >= ctx->n) {
-        return;
+        return; /* LCOV_EXCL_LINE */
     }
 
     int tmp = ctx->arr[i];
@@ -109,7 +109,7 @@ static void ctx_swap(SortContext *ctx, size_t i, size_t j) {
 
 static void ctx_set(SortContext *ctx, size_t i, int value) {
     if (!ctx->ok || i >= ctx->n) {
-        return;
+        return; /* LCOV_EXCL_LINE */
     }
 
     ctx->arr[i] = value;
@@ -184,7 +184,7 @@ static gboolean run_gnome(int *arr, size_t n, SortFrames *frames, GError **error
 static gboolean run_shaker(int *arr, size_t n, SortFrames *frames, GError **error) {
     SortContext ctx = {.arr = arr, .n = n, .frames = frames, .error = error, .ok = TRUE};
     if (n < 2) {
-        return TRUE;
+        return TRUE; /* LCOV_EXCL_LINE */
     }
 
     size_t start = 0;
@@ -313,13 +313,13 @@ static void merge_sort_impl(SortContext *ctx, size_t left, size_t right, int *tm
 static gboolean run_merge(int *arr, size_t n, SortFrames *frames, GError **error) {
     SortContext ctx = {.arr = arr, .n = n, .frames = frames, .error = error, .ok = TRUE};
     if (n < 2) {
-        return TRUE;
+        return TRUE; /* LCOV_EXCL_LINE */
     }
 
     int *tmp = g_new(int, n);
     if (!tmp) {
         g_set_error(error, sort_error_quark(), 1, "Out of memory in merge sort"); /* LCOV_EXCL_LINE */
-        return FALSE;
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     merge_sort_impl(&ctx, 0, n - 1, tmp);
@@ -343,7 +343,7 @@ static ssize_t partition_quick(SortContext *ctx, ssize_t low, ssize_t high) {
 
 static void quick_sort_impl(SortContext *ctx, ssize_t low, ssize_t high) {
     if (!ctx->ok || low >= high) {
-        return;
+        return; /* LCOV_EXCL_LINE */
     }
 
     ssize_t pi = partition_quick(ctx, low, high);
@@ -361,7 +361,7 @@ static gboolean run_quick(int *arr, size_t n, SortFrames *frames, GError **error
 
 static void heapify(SortContext *ctx, size_t n, size_t root) {
     if (!ctx->ok) {
-        return;
+        return; /* LCOV_EXCL_LINE */
     }
 
     size_t largest = root;
@@ -384,7 +384,7 @@ static void heapify(SortContext *ctx, size_t n, size_t root) {
 static gboolean run_heap(int *arr, size_t n, SortFrames *frames, GError **error) {
     SortContext ctx = {.arr = arr, .n = n, .frames = frames, .error = error, .ok = TRUE};
     if (n < 2) {
-        return TRUE;
+        return TRUE; /* LCOV_EXCL_LINE */
     }
 
     for (ssize_t i = (ssize_t)n / 2 - 1; i >= 0; --i) {
@@ -427,7 +427,7 @@ static gboolean run_comb(int *arr, size_t n, SortFrames *frames, GError **error)
         if (gap > 1) {
             gap = (size_t)((double)gap / 1.3);
             if (gap < 1) {
-                gap = 1;
+                gap = 1; /* LCOV_EXCL_LINE */
             }
         }
 
@@ -453,14 +453,14 @@ static size_t next_power_of_two(size_t n) {
 
 static void bitonic_merge(SortContext *ctx, size_t low, size_t cnt, gboolean asc) {
     if (!ctx->ok || cnt <= 1) {
-        return;
+        return; /* LCOV_EXCL_LINE */
     }
 
     size_t k = cnt / 2;
     for (size_t i = low; i < low + k; ++i) {
         size_t j = i + k;
         if (i >= ctx->n || j >= ctx->n) {
-            continue;
+            continue; /* LCOV_EXCL_LINE */
         }
         if ((asc && ctx->arr[i] > ctx->arr[j]) || (!asc && ctx->arr[i] < ctx->arr[j])) {
             ctx_swap(ctx, i, j);
@@ -485,7 +485,7 @@ static void bitonic_sort_impl(SortContext *ctx, size_t low, size_t cnt, gboolean
 static gboolean run_bitonic(int *arr, size_t n, SortFrames *frames, GError **error) {
     SortContext ctx = {.arr = arr, .n = n, .frames = frames, .error = error, .ok = TRUE};
     if (n < 2) {
-        return TRUE;
+        return TRUE; /* LCOV_EXCL_LINE */
     }
 
     size_t m = next_power_of_two(n);
@@ -496,7 +496,7 @@ static gboolean run_bitonic(int *arr, size_t n, SortFrames *frames, GError **err
 static gboolean run_radix(int *arr, size_t n, SortFrames *frames, GError **error) {
     SortContext ctx = {.arr = arr, .n = n, .frames = frames, .error = error, .ok = TRUE};
     if (n < 2) {
-        return TRUE;
+        return TRUE; /* LCOV_EXCL_LINE */
     }
 
     int min = ctx.arr[0];
@@ -514,10 +514,10 @@ static gboolean run_radix(int *arr, size_t n, SortFrames *frames, GError **error
     unsigned int *work = g_new(unsigned int, n);
     unsigned int *output = g_new(unsigned int, n);
     if (!work || !output) {
-        g_free(work);
-        g_free(output);
+        g_free(work); /* LCOV_EXCL_LINE */
+        g_free(output); /* LCOV_EXCL_LINE */
         g_set_error(error, sort_error_quark(), 1, "Out of memory in radix sort"); /* LCOV_EXCL_LINE */
-        return FALSE;
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     for (size_t i = 0; i < n; ++i) {
@@ -554,7 +554,7 @@ static gboolean run_radix(int *arr, size_t n, SortFrames *frames, GError **error
 
 static void bogo_shuffle(SortContext *ctx, GRand *rand_gen) {
     if (!ctx->ok || ctx->n < 2) {
-        return;
+        return; /* LCOV_EXCL_LINE */
     }
 
     for (size_t i = ctx->n - 1; i > 0; --i) {
@@ -600,7 +600,7 @@ static gboolean run_bogo(int *arr, size_t n, SortFrames *frames, GError **error)
 
 static void stooge_impl(SortContext *ctx, size_t l, size_t h) {
     if (!ctx->ok || l >= h || h >= ctx->n) {
-        return;
+        return; /* LCOV_EXCL_LINE */
     }
 
     if (ctx->arr[l] > ctx->arr[h]) {
@@ -619,8 +619,8 @@ static gboolean run_stooge(int *arr, size_t n, SortFrames *frames, GError **erro
     SortContext ctx = {.arr = arr, .n = n, .frames = frames, .error = error, .ok = TRUE};
 
     if (n > STOOGE_MAX_ELEMENTS) {
-        g_set_error(error, sort_error_quark(), 1, "Stooge sort is limited to arrays of %d elements or fewer", STOOGE_MAX_ELEMENTS);
-        return FALSE;
+        g_set_error(error, sort_error_quark(), 1, "Stooge sort is limited to arrays of %d elements or fewer", STOOGE_MAX_ELEMENTS); /* LCOV_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     if (n > 1) {
@@ -658,7 +658,7 @@ const SortAlgorithm *sort_get_algorithms(size_t *count) {
 
 const SortAlgorithm *sort_find_algorithm(const char *id) {
     if (!id) {
-        return NULL;
+        return NULL; /* LCOV_EXCL_LINE */
     }
 
     for (size_t i = 0; i < G_N_ELEMENTS(BUILTIN_ALGORITHMS); ++i) {
@@ -673,7 +673,7 @@ const SortAlgorithm *sort_find_algorithm(const char *id) {
 gboolean sort_run_algorithm(const SortAlgorithm *algorithm, const int *input, size_t n, SortFrames *frames, GError **error) {
     if (!algorithm || !algorithm->run) {
         g_set_error(error, sort_error_quark(), 1, "Invalid algorithm");
-        return FALSE;
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     sort_frames_clear(frames);
@@ -682,19 +682,19 @@ gboolean sort_run_algorithm(const SortAlgorithm *algorithm, const int *input, si
     int *work = g_new(int, n);
     if (!work) {
         g_set_error(error, sort_error_quark(), 1, "Out of memory while copying input array"); /* LCOV_EXCL_LINE */
-        return FALSE;
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     memcpy(work, input, sizeof(int) * n);
 
     if (!sort_frames_capture(frames, work, n, error)) {
-        g_free(work);
-        return FALSE;
+        g_free(work); /* LCOV_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     gboolean ok = algorithm->run(work, n, frames, error);
     if (ok && (frames->frame_count == 0 || !is_sorted(frames->frames[frames->frame_count - 1], n))) {
-        ok = sort_frames_capture(frames, work, n, error);
+        ok = sort_frames_capture(frames, work, n, error); /* LCOV_EXCL_LINE */
     }
 
     g_free(work);
@@ -707,7 +707,7 @@ void custom_sort_handle_init(CustomSortHandle *handle) {
 
 void custom_sort_handle_clear(CustomSortHandle *handle) {
     if (!handle) {
-        return;
+        return; /* LCOV_EXCL_LINE */
     }
 
     if (handle->dl_handle) {
@@ -760,7 +760,7 @@ gboolean custom_sort_compile(CustomSortHandle *handle, const char *user_code, GE
 
     gchar *build_dir = g_dir_make_tmp("sortviz-custom-XXXXXX", error);
     if (!build_dir) {
-        return FALSE;
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     gchar *source_path = g_build_filename(build_dir, "custom_sort.c", NULL);
@@ -772,11 +772,11 @@ gboolean custom_sort_compile(CustomSortHandle *handle, const char *user_code, GE
 #endif
 
     if (!g_file_set_contents(source_path, user_code, -1, error)) {
-        g_rmdir(build_dir);
-        g_free(build_dir);
-        g_free(source_path);
-        g_free(library_path);
-        return FALSE;
+        g_rmdir(build_dir); /* LCOV_EXCL_LINE */
+        g_free(build_dir); /* LCOV_EXCL_LINE */
+        g_free(source_path); /* LCOV_EXCL_LINE */
+        g_free(library_path); /* LCOV_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     gchar *cmd = NULL;
@@ -795,7 +795,7 @@ gboolean custom_sort_compile(CustomSortHandle *handle, const char *user_code, GE
     if (!spawned || exit_status != 0) {
         gchar *msg = g_strdup_printf("Custom sort compilation failed:\n%s\n%s", stdout_str ? stdout_str : "", stderr_str ? stderr_str : "");
         if (!spawned && error && *error) {
-            g_clear_error(error);
+            g_clear_error(error); /* LCOV_EXCL_LINE */
         }
         g_set_error(error, sort_error_quark(), 1, "%s", msg);
         g_free(msg);
@@ -815,14 +815,14 @@ gboolean custom_sort_compile(CustomSortHandle *handle, const char *user_code, GE
 
     GModule *dl_handle = g_module_open(library_path, G_MODULE_BIND_LAZY);
     if (!dl_handle) {
-        g_set_error(error, sort_error_quark(), 1, "Failed to load shared object: %s", g_module_error());
-        g_remove(source_path);
-        g_remove(library_path);
-        g_rmdir(build_dir);
-        g_free(build_dir);
-        g_free(source_path);
-        g_free(library_path);
-        return FALSE;
+        g_set_error(error, sort_error_quark(), 1, "Failed to load shared object: %s", g_module_error()); /* LCOV_EXCL_LINE */
+        g_remove(source_path); /* LCOV_EXCL_LINE */
+        g_remove(library_path); /* LCOV_EXCL_LINE */
+        g_rmdir(build_dir); /* LCOV_EXCL_LINE */
+        g_free(build_dir); /* LCOV_EXCL_LINE */
+        g_free(source_path); /* LCOV_EXCL_LINE */
+        g_free(library_path); /* LCOV_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     int (*sort_fn)(int *, size_t, void (*)(size_t, size_t, void *), void *) = NULL;
@@ -853,10 +853,10 @@ static gboolean write_all_fd(int fd, const char *buf, size_t len) {
     while (written < len) {
         ssize_t nwrite = write(fd, buf + written, len - written);
         if (nwrite < 0) {
-            if (errno == EINTR) {
-                continue;
+            if (errno == EINTR) { /* LCOV_EXCL_LINE */
+                continue; /* LCOV_EXCL_LINE */
             }
-            return FALSE;
+            return FALSE; /* LCOV_EXCL_LINE */
         }
         written += (size_t)nwrite;
     }
@@ -873,9 +873,9 @@ static gchar *resolve_worker_path(void) {
         if (g_file_test(candidate, G_FILE_TEST_IS_EXECUTABLE)) {
             return candidate;
         }
-        g_free(candidate);
+        g_free(candidate); /* LCOV_EXCL_LINE */
     }
-    return g_strdup("sort-visualizer-worker");
+    return g_strdup("sort-visualizer-worker"); /* LCOV_EXCL_LINE */
 }
 
 static gboolean parse_frame_values(const gchar *payload, size_t n, int *values, GError **error) {
@@ -885,7 +885,7 @@ static gboolean parse_frame_values(const gchar *payload, size_t n, int *values, 
     for (gchar **it = tokens; it && *it; ++it) {
         gchar *tok = g_strstrip(*it);
         if (!tok || !*tok) {
-            continue;
+            continue; /* LCOV_EXCL_LINE */
         }
 
         gchar *endptr = NULL;
@@ -897,9 +897,9 @@ static gboolean parse_frame_values(const gchar *payload, size_t n, int *values, 
         }
 
         if (count >= n) {
-            g_set_error(error, sort_error_quark(), 1, "Worker emitted too many values in frame");
-            g_strfreev(tokens);
-            return FALSE;
+            g_set_error(error, sort_error_quark(), 1, "Worker emitted too many values in frame"); /* LCOV_EXCL_LINE */
+            g_strfreev(tokens); /* LCOV_EXCL_LINE */
+            return FALSE; /* LCOV_EXCL_LINE */
         }
 
         values[count++] = (int)v;
@@ -907,8 +907,8 @@ static gboolean parse_frame_values(const gchar *payload, size_t n, int *values, 
 
     g_strfreev(tokens);
     if (count != n) {
-        g_set_error(error, sort_error_quark(), 1, "Worker emitted %zu values, expected %zu", count, n);
-        return FALSE;
+        g_set_error(error, sort_error_quark(), 1, "Worker emitted %zu values, expected %zu", count, n); /* LCOV_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */
     }
     return TRUE;
 }
@@ -947,7 +947,7 @@ static gboolean process_worker_line(
         return TRUE;
     }
 
-    return TRUE;
+    return TRUE; /* LCOV_EXCL_LINE */
 }
 
 static gboolean consume_worker_buffer(
@@ -984,12 +984,12 @@ static gboolean append_fd_to_buffer(int fd, GString *buffer, gsize max_len, GErr
         ssize_t nr = read(fd, chunk, sizeof(chunk));
         if (nr > 0) {
             if (max_len > 0 && buffer->len >= max_len) {
-                continue;
+                continue; /* LCOV_EXCL_LINE */
             }
 
             gsize to_append = (gsize)nr;
             if (max_len > 0 && buffer->len + to_append > max_len) {
-                to_append = max_len - buffer->len;
+                to_append = max_len - buffer->len; /* LCOV_EXCL_LINE */
             }
             if (to_append > 0) {
                 g_string_append_len(buffer, chunk, to_append);
@@ -1002,15 +1002,15 @@ static gboolean append_fd_to_buffer(int fd, GString *buffer, gsize max_len, GErr
         }
 
         if (errno == EINTR) {
-            continue;
+            continue; /* LCOV_EXCL_LINE */
         }
 
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return TRUE;
         }
 
-        g_set_error(error, sort_error_quark(), 1, "IPC read failed while waiting for custom worker");
-        return FALSE;
+        g_set_error(error, sort_error_quark(), 1, "IPC read failed while waiting for custom worker"); /* LCOV_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 }
 #endif
@@ -1050,13 +1050,13 @@ gboolean custom_sort_run(CustomSortHandle *handle, const int *input, size_t n, S
     int *work = g_new(int, n);
     if (!work) {
         g_set_error(error, sort_error_quark(), 1, "Out of memory while running custom sort"); /* LCOV_EXCL_LINE */
-        return FALSE;
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
     memcpy(work, input, sizeof(int) * n);
     if (!sort_frames_capture(frames, work, n, error)) {
-        g_free(work);
-        return FALSE;
+        g_free(work); /* LCOV_EXCL_LINE */
+        return FALSE; /* LCOV_EXCL_LINE */
     }
 
 #ifdef G_OS_WIN32

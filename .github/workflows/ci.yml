@@ -69,11 +69,15 @@ jobs:
           sudo apt-get install -y \
             build-essential \
             cmake \
+            python3-pip \
             pkg-config \
             libgtk-3-dev \
             libglib2.0-dev \
             lcov \
             xvfb
+
+      - name: Install gcovr
+        run: python3 -m pip install --upgrade gcovr
 
       - name: Configure CMake (Coverage)
         run: cmake -S . -B build-coverage -DENABLE_COVERAGE=ON
@@ -84,14 +88,38 @@ jobs:
       - name: Run line coverage
         run: cmake --build build-coverage --target coverage
 
-      - name: Export coverage summary
+      - name: Generate branch coverage (gcovr)
+        run: |
+          gcovr \
+            --root . \
+            --object-directory build-coverage \
+            --filter 'src/(main|sort_engine)\.c$' \
+            --txt-summary \
+            --branches \
+            > build-coverage/gcovr-branch-summary.txt
+
+          gcovr \
+            --root . \
+            --object-directory build-coverage \
+            --filter 'src/(main|sort_engine)\.c$' \
+            --html-details build-coverage/gcovr-branch-coverage.html \
+            --html-title "sort-visualizer branch coverage" \
+            --branches
+
+      - name: Export coverage summaries
         run: |
           lcov --summary build-coverage/coverage.info | tee build-coverage/coverage-summary.txt
           {
-            echo "## Coverage Summary"
+            echo "## Coverage Summary (Line)"
             echo
             echo "\`\`\`text"
             cat build-coverage/coverage-summary.txt
+            echo "\`\`\`"
+            echo
+            echo "## Coverage Summary (Branch, gcovr)"
+            echo
+            echo "\`\`\`text"
+            cat build-coverage/gcovr-branch-summary.txt
             echo "\`\`\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -103,6 +131,8 @@ jobs:
             build-coverage/coverage.info
             build-coverage/coverage-summary.txt
             build-coverage/coverage-html/
+            build-coverage/gcovr-branch-summary.txt
+            build-coverage/gcovr-branch-coverage.html
 
   build-windows-cmake:
     name: Build (Windows CMake)

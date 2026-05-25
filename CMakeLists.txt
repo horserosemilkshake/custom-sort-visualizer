@@ -203,10 +203,10 @@ if(ENABLE_COVERAGE AND NOT WIN32)
     add_custom_target(coverage
         COMMAND ${LCOV_EXECUTABLE} --directory . --zerocounters
         COMMAND ${COVERAGE_CTEST_COMMAND}
-        COMMAND ${LCOV_EXECUTABLE} --capture --directory . --output-file coverage.info
+        COMMAND ${LCOV_EXECUTABLE} --capture --directory . --output-file coverage.info --rc branch_coverage=1
         COMMAND ${LCOV_EXECUTABLE} --extract coverage.info '*/src/main.c' '*/src/sort_engine.c' --output-file coverage.info
-        COMMAND ${GENHTML_EXECUTABLE} coverage.info --output-directory coverage-html --title "sort-visualizer line coverage" --legend
-        COMMAND ${LCOV_EXECUTABLE} --summary coverage.info --fail-under-lines 85
+        COMMAND ${GENHTML_EXECUTABLE} coverage.info --output-directory coverage-html --title "sort-visualizer line coverage" --legend --branch-coverage
+        COMMAND ${LCOV_EXECUTABLE} --summary coverage.info --rc branch_coverage=1 --fail-under-lines 85
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         DEPENDS test-sort-unit test-sort-integration test-ui-helpers
         COMMENT "Running tests and enforcing >=85% line coverage for src/main.c and src/sort_engine.c (bogo excluded)"

@@ -87,8 +87,10 @@ The CI workflow also publishes coverage outputs for each run of `Coverage (Linux
 
 - `coverage-html` artifact includes:
     - `coverage-summary.txt` (text summary from `lcov --summary`)
+    - `gcovr-branch-summary.txt` (text summary from `gcovr --branches`)
     - `coverage.info` (raw lcov data)
     - `coverage-html/` (HTML report)
+    - `gcovr-branch-coverage.html` (branch-coverage HTML report)
 
 Download these from the workflow run page:
 
