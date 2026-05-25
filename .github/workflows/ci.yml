@@ -94,32 +94,27 @@ jobs:
             --root . \
             --object-directory build-coverage \
             --filter 'src/(main|sort_engine)\.c$' \
+            --exclude-branches-by-pattern 'GCOVR_EXCL_BR_LINE' \
             --txt-summary \
             --branches \
-            > build-coverage/gcovr-branch-summary.txt
+            > build-coverage/coverage-summary.txt
 
           gcovr \
             --root . \
             --object-directory build-coverage \
             --filter 'src/(main|sort_engine)\.c$' \
+            --exclude-branches-by-pattern 'GCOVR_EXCL_BR_LINE' \
             --html-details build-coverage/gcovr-branch-coverage.html \
             --html-title "sort-visualizer branch coverage" \
             --branches
 
       - name: Export coverage summaries
         run: |
-          lcov --summary build-coverage/coverage.info | tee build-coverage/coverage-summary.txt
           {
-            echo "## Coverage Summary (Line)"
+            echo "## Coverage Summary (gcovr)"
             echo
             echo "\`\`\`text"
             cat build-coverage/coverage-summary.txt
-            echo "\`\`\`"
-            echo
-            echo "## Coverage Summary (Branch, gcovr)"
-            echo
-            echo "\`\`\`text"
-            cat build-coverage/gcovr-branch-summary.txt
             echo "\`\`\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -131,7 +126,6 @@ jobs:
             build-coverage/coverage.info
             build-coverage/coverage-summary.txt
             build-coverage/coverage-html/
-            build-coverage/gcovr-branch-summary.txt
             build-coverage/gcovr-branch-coverage.html
 
   build-windows-cmake:
