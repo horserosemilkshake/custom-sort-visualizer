@@ -2,6 +2,7 @@
 
 #include <gtk/gtk.h>
 
+#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -617,8 +618,9 @@ static gboolean parse_array_input(const gchar *text, int **out_array, size_t *ou
         }
 
         gchar *endptr = NULL;
+        errno = 0;
         long value = strtol(tok, &endptr, 10);
-        if (endptr == tok || *endptr != '\0' || value < INT_MIN || value > INT_MAX) { /* GCOVR_EXCL_BR_LINE */
+        if (errno == ERANGE || endptr == tok || *endptr != '\0' || value < INT_MIN || value > INT_MAX) { /* GCOVR_EXCL_BR_LINE */
             g_set_error(error, g_quark_from_static_string("sort-ui"), 1, "Invalid integer token: %s", tok);
             g_strfreev(tokens);
             g_free(arr); /* GCOVR_EXCL_BR_LINE */

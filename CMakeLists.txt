@@ -212,9 +212,14 @@ if(ENABLE_COVERAGE AND NOT WIN32)
     find_program(LCOV_EXECUTABLE lcov REQUIRED)
     find_program(GENHTML_EXECUTABLE genhtml REQUIRED)
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-        string(REPLACE "gcc" "gcov" GCOV_FROM_COMPILER ${CMAKE_C_COMPILER})
-        if(EXISTS ${GCOV_FROM_COMPILER})
-            set(GCOV_EXECUTABLE ${GCOV_FROM_COMPILER})
+        execute_process(
+            COMMAND ${CMAKE_C_COMPILER} -print-prog-name=gcov
+            OUTPUT_VARIABLE GCOV_FROM_COMPILER
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(GCOV_FROM_COMPILER AND EXISTS "${GCOV_FROM_COMPILER}")
+            set(GCOV_EXECUTABLE "${GCOV_FROM_COMPILER}")
         else()
             find_program(GCOV_EXECUTABLE NAMES gcov-${CMAKE_C_COMPILER_VERSION_MAJOR} gcov REQUIRED)
         endif()
