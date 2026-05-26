@@ -166,6 +166,24 @@ static void test_parse_array_input_paths(void) {
     g_assert_cmpint(arr[0], ==, 10);
     g_assert_cmpint(arr[1], ==, 20);
     g_free(arr);
+
+    g_assert_true(parse_array_input("+1 -2 +3", &arr, &n, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(n, ==, 3);
+    g_assert_cmpint(arr[0], ==, 1);
+    g_assert_cmpint(arr[1], ==, -2);
+    g_assert_cmpint(arr[2], ==, 3);
+    g_free(arr);
+
+    g_assert_false(parse_array_input("2147483648", &arr, &n, &error));
+    g_assert_nonnull(error);
+    g_assert_nonnull(strstr(error->message, "Invalid integer token"));
+    g_clear_error(&error);
+
+    g_assert_false(parse_array_input("-2147483649", &arr, &n, &error));
+    g_assert_nonnull(error);
+    g_assert_nonnull(strstr(error->message, "Invalid integer token"));
+    g_clear_error(&error);
 }
 
 static void test_runtime_translation_passthrough(void) {

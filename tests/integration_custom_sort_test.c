@@ -532,6 +532,484 @@ static void test_custom_sort_runtime_error_after_result_fails(void) {
     custom_sort_handle_clear(&handle);
 }
 
+static void test_custom_sort_runtime_result_with_plus_sign(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME 3,2,1\\n\");\n"
+        "    printf(\"RESULT +0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_true(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >, 0);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_result_with_trailing_space_invalid(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"RESULT 0 \\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "invalid result line"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_frame_with_signed_values_valid(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {0, 0, 0};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME +3,-2,+1\\n\");\n"
+        "    printf(\"RESULT 0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_true(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >, 0);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_frame_token_overflow(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {1, 2, 3};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME 999999999999,2,3\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "invalid frame token"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_result_overflow(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {1, 2, 3};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"RESULT 999999999999\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "invalid result line"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_no_frames_with_success_result(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {7, 5, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"RESULT 0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_true(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >, 0);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_stderr_appended_to_error(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {7, 5, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    fprintf(stderr, \"stderr boom\\n\");\n"
+        "    printf(\"RESULT not-an-int\\n\");\n"
+        "    fflush(stdout);\n"
+        "    fflush(stderr);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "invalid result line"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_empty_error_payload_fails(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {7, 5, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"ERROR \\n\");\n"
+        "    printf(\"RESULT 0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_multiple_valid_frames(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME 3,2,1\\n\");\n"
+        "    printf(\"FRAME 2,1,3\\n\");\n"
+        "    printf(\"FRAME 1,2,3\\n\");\n"
+        "    printf(\"RESULT 0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_true(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >=, 4);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_unknown_lines_then_result_no_frames(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"COMMENT hello\\n\");\n"
+        "    printf(\"NOTE world\\n\");\n"
+        "    printf(\"RESULT 0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_true(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >, 0);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_frame_with_whitespace_tokens_valid(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {0, 0, 0};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME  , 1 ,\\t,2, 3 , \\n\");\n"
+        "    printf(\"RESULT 0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_true(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >, 0);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_result_with_leading_spaces_valid(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME 1,2,3\\n\");\n"
+        "    printf(\"RESULT    0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_true(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >, 0);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_result_negative_zero_valid(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME 1,2,3\\n\");\n"
+        "    printf(\"RESULT -0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_true(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >, 0);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_frame_with_embedded_space_invalid(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME 1,2 3,4\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_false(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_error(error, g_quark_from_static_string("sort-visualizer-error"), 1);
+    g_assert_nonnull(strstr(error->message, "invalid frame token"));
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
+static void test_custom_sort_runtime_frame_prefix_with_tab_ignored(void) {
+    CustomSortHandle handle;
+    SortFrames frames;
+    GError *error = NULL;
+
+    int input[] = {3, 2, 1};
+    const char *code =
+        "#include <stdio.h>\n"
+        "#include <stddef.h>\n"
+        "int custom_sort(int *arr, size_t n, void (*swap_cb)(size_t,size_t,void*), void *user_data) {\n"
+        "    (void)arr; (void)n; (void)swap_cb; (void)user_data;\n"
+        "    printf(\"FRAME\\t1,2,3\\n\");\n"
+        "    printf(\"RESULT 0\\n\");\n"
+        "    fflush(stdout);\n"
+        "    return 0;\n"
+        "}\n";
+
+    custom_sort_handle_init(&handle);
+    sort_frames_init(&frames);
+
+    g_assert_true(custom_sort_compile(&handle, code, &error));
+    g_assert_no_error(error);
+
+    g_assert_true(custom_sort_run(&handle, input, G_N_ELEMENTS(input), &frames, &error));
+    g_assert_no_error(error);
+    g_assert_cmpuint(frames.frame_count, >, 0);
+
+    g_clear_error(&error);
+    sort_frames_clear(&frames);
+    custom_sort_handle_clear(&handle);
+}
+
 int main(int argc, char **argv) {
     g_test_init(&argc, &argv, NULL);
 
@@ -552,6 +1030,21 @@ int main(int argc, char **argv) {
     g_test_add_func("/integration/custom_sort_runtime_last_error_line_wins", test_custom_sort_runtime_last_error_line_wins);
     g_test_add_func("/integration/custom_sort_runtime_last_result_line_wins", test_custom_sort_runtime_last_result_line_wins);
     g_test_add_func("/integration/custom_sort_runtime_error_after_result_fails", test_custom_sort_runtime_error_after_result_fails);
+    g_test_add_func("/integration/custom_sort_runtime_result_with_plus_sign", test_custom_sort_runtime_result_with_plus_sign);
+    g_test_add_func("/integration/custom_sort_runtime_result_with_trailing_space_invalid", test_custom_sort_runtime_result_with_trailing_space_invalid);
+    g_test_add_func("/integration/custom_sort_runtime_frame_with_signed_values_valid", test_custom_sort_runtime_frame_with_signed_values_valid);
+    g_test_add_func("/integration/custom_sort_runtime_frame_token_overflow", test_custom_sort_runtime_frame_token_overflow);
+    g_test_add_func("/integration/custom_sort_runtime_result_overflow", test_custom_sort_runtime_result_overflow);
+    g_test_add_func("/integration/custom_sort_runtime_no_frames_with_success_result", test_custom_sort_runtime_no_frames_with_success_result);
+    g_test_add_func("/integration/custom_sort_runtime_stderr_appended_to_error", test_custom_sort_runtime_stderr_appended_to_error);
+    g_test_add_func("/integration/custom_sort_runtime_empty_error_payload_fails", test_custom_sort_runtime_empty_error_payload_fails);
+    g_test_add_func("/integration/custom_sort_runtime_multiple_valid_frames", test_custom_sort_runtime_multiple_valid_frames);
+    g_test_add_func("/integration/custom_sort_runtime_unknown_lines_then_result_no_frames", test_custom_sort_runtime_unknown_lines_then_result_no_frames);
+    g_test_add_func("/integration/custom_sort_runtime_frame_with_whitespace_tokens_valid", test_custom_sort_runtime_frame_with_whitespace_tokens_valid);
+    g_test_add_func("/integration/custom_sort_runtime_result_with_leading_spaces_valid", test_custom_sort_runtime_result_with_leading_spaces_valid);
+    g_test_add_func("/integration/custom_sort_runtime_result_negative_zero_valid", test_custom_sort_runtime_result_negative_zero_valid);
+    g_test_add_func("/integration/custom_sort_runtime_frame_with_embedded_space_invalid", test_custom_sort_runtime_frame_with_embedded_space_invalid);
+    g_test_add_func("/integration/custom_sort_runtime_frame_prefix_with_tab_ignored", test_custom_sort_runtime_frame_prefix_with_tab_ignored);
 
     return g_test_run();
 }

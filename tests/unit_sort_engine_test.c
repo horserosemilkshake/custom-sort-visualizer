@@ -251,6 +251,58 @@ static void test_bogo_small_input_success(void) {
     sort_frames_clear(&frames);
 }
 
+static guint32 next_lcg(guint32 *state) {
+    *state = (*state * 1664525u) + 1013904223u;
+    return *state;
+}
+
+static void test_generated_path_stress_18443_cases(void) {
+    static const char *algorithm_ids[] = {
+        "quick",
+        "merge",
+        "heap",
+        "shell",
+        "comb",
+    };
+
+    const guint total_cases = 18443;
+    guint32 rng = 0xC0FFEE11u;
+    guint executed = 0;
+
+    for (guint case_id = 0; case_id < total_cases; ++case_id) {
+        const char *algo_id = algorithm_ids[case_id % G_N_ELEMENTS(algorithm_ids)];
+        const SortAlgorithm *algo = sort_find_algorithm(algo_id);
+        SortFrames frames;
+        GError *error = NULL;
+        int input[10] = {0};
+        int original[10] = {0};
+        size_t n = (size_t)((next_lcg(&rng) % 10u) + 1u);
+
+        g_assert_nonnull(algo);
+
+        for (size_t i = 0; i < n; ++i) {
+            guint32 v = next_lcg(&rng);
+            input[i] = (int)(v % 101u) - 50;
+            original[i] = input[i];
+        }
+
+        sort_frames_init(&frames);
+
+        g_assert_true(sort_run_algorithm(algo, input, n, &frames, &error));
+        g_assert_no_error(error);
+        g_assert_cmpuint(frames.frame_count, >, 0);
+        g_assert_cmpuint(frames.n, ==, n);
+        g_assert_cmpmem(frames.frames[0], n * sizeof(int), original, n * sizeof(int));
+        g_assert_true(array_is_sorted(frames.frames[frames.frame_count - 1], frames.n));
+
+        g_clear_error(&error);
+        sort_frames_clear(&frames);
+        ++executed;
+    }
+
+    g_assert_cmpuint(executed, ==, total_cases);
+}
+
 int main(int argc, char **argv) {
     g_test_init(&argc, &argv, NULL);
 
@@ -266,6 +318,7 @@ int main(int argc, char **argv) {
     g_test_add_func("/sort_engine/custom_preconditions", test_custom_api_preconditions);
     g_test_add_func("/sort_engine/custom_null_inputs", test_custom_api_null_inputs);
     g_test_add_func("/sort_engine/bogo_small_success", test_bogo_small_input_success);
+    g_test_add_func("/sort_engine/generated_path_stress_18443", test_generated_path_stress_18443_cases);
 
     return g_test_run();
 }

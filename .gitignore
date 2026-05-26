@@ -1,6 +1,7 @@
 # Build directories
 build/
 build-coverage/
+build-coverage-*/
 cmake-build-*/
 build-release-*/
 AppDir/
@@ -41,3 +42,7 @@ sort-visualizer-worker
 *.swo
 .DS_Store
 Thumbs.db
+
+# Local temporary backups
+*.bak
+*.tmp

@@ -31,7 +31,9 @@ if(ENABLE_COVERAGE)
 
         if(ENABLE_PATH_COVERAGE)
             if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+                set(CMAKE_REQUIRED_LINK_OPTIONS --coverage)
                 check_c_compiler_flag("-fpath-coverage" HAVE_FPATH_COVERAGE)
+                unset(CMAKE_REQUIRED_LINK_OPTIONS)
                 if(HAVE_FPATH_COVERAGE)
                     list(APPEND COVERAGE_COMPILE_OPTIONS -fpath-coverage)
                     message(STATUS "Prime-path coverage instrumentation enabled")
@@ -209,6 +211,16 @@ add_test(NAME unit-ui-helpers COMMAND ${CMAKE_COMMAND} -E env NO_AT_BRIDGE=1 $<T
 if(ENABLE_COVERAGE AND NOT WIN32)
     find_program(LCOV_EXECUTABLE lcov REQUIRED)
     find_program(GENHTML_EXECUTABLE genhtml REQUIRED)
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        string(REPLACE "gcc" "gcov" GCOV_FROM_COMPILER ${CMAKE_C_COMPILER})
+        if(EXISTS ${GCOV_FROM_COMPILER})
+            set(GCOV_EXECUTABLE ${GCOV_FROM_COMPILER})
+        else()
+            find_program(GCOV_EXECUTABLE NAMES gcov-${CMAKE_C_COMPILER_VERSION_MAJOR} gcov REQUIRED)
+        endif()
+    else()
+        find_program(GCOV_EXECUTABLE gcov REQUIRED)
+    endif()
     find_program(XVFB_RUN_EXECUTABLE xvfb-run)
 
     set(COVERAGE_CTEST_COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure)
@@ -217,9 +229,9 @@ if(ENABLE_COVERAGE AND NOT WIN32)
     endif()
 
     add_custom_target(coverage
-        COMMAND ${LCOV_EXECUTABLE} --directory . --zerocounters
+        COMMAND ${LCOV_EXECUTABLE} --gcov-tool ${GCOV_EXECUTABLE} --directory . --zerocounters
         COMMAND ${COVERAGE_CTEST_COMMAND}
-        COMMAND ${LCOV_EXECUTABLE} --capture --directory . --output-file coverage.info --rc branch_coverage=1
+        COMMAND ${LCOV_EXECUTABLE} --gcov-tool ${GCOV_EXECUTABLE} --capture --directory . --output-file coverage.info --rc branch_coverage=1
         COMMAND ${LCOV_EXECUTABLE} --extract coverage.info '*/src/main.c' '*/src/sort_engine.c' --output-file coverage.info
         COMMAND ${GENHTML_EXECUTABLE} coverage.info --output-directory coverage-html --title "sort-visualizer line coverage" --legend --branch-coverage
         COMMAND ${LCOV_EXECUTABLE} --summary coverage.info --rc branch_coverage=1 --fail-under-lines 85
